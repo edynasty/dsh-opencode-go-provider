@@ -1,4 +1,8 @@
+import z from "@deepseek-ai/schemastery";
+import { CredentialRef, credentialRef } from "@deepseek-ai/dsh-credentials";
+import { GenerateOptions, LlmAdapter, LlmConfigurableProvider, LlmModelInfo, LlmProviderInfo, LlmResolvedModelInfo, StreamChunk } from "@deepseek-ai/dsh-llm";
 import { Context } from "@deepseek-ai/cordis";
+import { SettingsNamespace } from "@deepseek-ai/dsh-settings";
 //#region src/contract.d.ts
 /**
  * Shared Host/Client contract values for the OpenCode Go provider bundle.
@@ -238,6 +242,153 @@ declare function parseDeprecatedFile(value: unknown): readonly DeprecatedEntry[]
 /** Parse the patches.json artifact; an absent map means no patches. */
 declare function parsePatchesFile(value: unknown): Patches;
 //#endregion
+//#region src/config.d.ts
+/** Schema-surface configuration: the composition entry and settings section. */
+interface Config {
+  /** Credential reference (environment-variable name) resolved per operation. */
+  apiKeyEnv: string;
+  /** Catalog refresh interval in milliseconds. */
+  refreshMs: number;
+  /** Freshness window in milliseconds: within it a catalog is reused as-is. */
+  freshnessMs: number;
+  /** Per-operation network timeout in milliseconds. */
+  timeoutMs: number;
+  /** Grace period before a missing model is evicted, in milliseconds. */
+  graceMs: number;
+}
+/**
+ * Raw composition entry or settings section as a host hands it to the plugin:
+ * any partial section, with arbitrary extra keys that the schema merges and
+ * {@link assertServiceable} refuses. No `any`: unknown values stay `unknown`
+ * until the schema call narrows them.
+ */
+type SectionInput = Partial<Config> & Record<string, unknown>;
+/** Canonical defaults: 60-minute refresh, 5-minute freshness, 10s timeout, 14-day grace. */
+declare const DEFAULTS: {
+  readonly apiKeyEnv: "OPENCODE_GO_API_KEY";
+  readonly refreshMs: 3600000;
+  readonly freshnessMs: 300000;
+  readonly timeoutMs: 10000;
+  readonly graceMs: 1209600000;
+};
+/** Per-operation snapshot with a branded credential reference; frozen and detached. */
+interface ResolvedConfig {
+  readonly apiKeyEnv: ReturnType<typeof credentialRef>;
+  readonly refreshMs: number;
+  readonly freshnessMs: number;
+  readonly timeoutMs: number;
+  readonly graceMs: number;
+}
+/**
+ * Schemastery schema resolving the section; defaults fill an empty section.
+ * The input shape is the section (all fields optional), the output shape is
+ * {@link Config} (defaults materialized). Unknown keys are preserved by
+ * schemastery's object merge and refused by {@link assertServiceable}.
+ */
+declare const Config: z<Schemastery.ObjectS<{
+  apiKeyEnv: z<string, string>;
+  refreshMs: z<number, number>;
+  freshnessMs: z<number, number>;
+  timeoutMs: z<number, number>;
+  graceMs: z<number, number>;
+}>, Schemastery.ObjectT<{
+  apiKeyEnv: z<string, string>;
+  refreshMs: z<number, number>;
+  freshnessMs: z<number, number>;
+  timeoutMs: z<number, number>;
+  graceMs: z<number, number>;
+}>>;
+/**
+ * Refuse a resolved section this provider could not act on. Registered as the
+ * settings namespace's validator, so an unserviceable section is refused where
+ * it is written instead of being stored and silently breaking the operation.
+ * The error message never echoes any value — only the offending key name.
+ * @param config - the schema-resolved section.
+ * @throws Error naming the offending key.
+ */
+declare function assertServiceable(config: Config): void;
+/**
+ * Detach a frozen per-operation snapshot from a schema-resolved section.
+ * Branding happens here, once per operation, through the public
+ * `credentialRef` helper — the section keeps a plain string so configuration
+ * surfaces render it as a text field.
+ * @param raw - the schema-resolved section.
+ * @returns a frozen, detached snapshot safe to hand across module boundaries.
+ */
+declare function resolveConfig(raw: Config): ResolvedConfig;
+//#endregion
+//#region src/credentials.d.ts
+/** Stable machine code for an absent credential (string literal, per DSH convention). */
+declare const MISSING_CREDENTIAL_CODE = "MISSING_CREDENTIAL";
+/**
+ * Resolve the active credential for one reference, per operation. The
+ * credentials service is read fresh on every call; an absent service falls
+ * back to the launching environment. Empty stored values are absent.
+ * @param ctx - the consuming plugin's context.
+ * @param ref - the reference to resolve.
+ * @returns the canonical, header-carryable key.
+ * @throws LlmError with code `MISSING_CREDENTIAL` when unset, or
+ *   `INVALID_CREDENTIAL` when the value is non-canonical or unheaderable.
+ */
+declare function resolveApiKey(ctx: Context, ref: CredentialRef): Promise<string>;
+/**
+ * Resolve the key, then invoke the operation with the snapshot. The key is
+ * captured before the callback starts, so an in-flight operation keeps the key
+ * it began with even if the credential rotates; a missing or invalid key
+ * throws before the callback (and therefore before any network) runs.
+ * @param ctx - the consuming plugin's context.
+ * @param ref - the reference to resolve.
+ * @param run - the operation body, handed the resolved key snapshot.
+ * @returns the operation's result.
+ */
+declare function withResolvedKey<T>(ctx: Context, ref: CredentialRef, run: (key: string) => Promise<T>): Promise<T>;
+//#endregion
+//#region src/catalog-loader.d.ts
+/**
+ * Return the parsed embedded catalog models, ascending by id (the artifact is
+ * already sorted; the parsers preserve order).
+ * @returns the catalog models.
+ */
+declare function embeddedCatalogModels(): readonly CatalogModel[];
+//#endregion
+//#region src/placeholder-adapter.d.ts
+/** Stable machine code for Task 5 functionality being requested on this contract. */
+declare const NOT_IMPLEMENTED_CODE = "NOT_IMPLEMENTED";
+/** Display name served by the provider directory and selectors. */
+declare const DISPLAY_NAME = "OpenCode Go";
+/** Dependencies the service wires in; the catalog thunk lets Task 6 hot-swap snapshots. */
+interface PlaceholderAdapterDeps {
+  /** Live config source; re-read on every operation so settings hot-apply. */
+  readonly currentConfig: () => Config;
+  /** Per-operation credential resolver, gating every stream before network. */
+  readonly resolveKey: (ref: CredentialRef) => Promise<string>;
+  /** Embedded catalog source; advisory and credential-free. */
+  readonly catalog: () => readonly CatalogModel[];
+}
+/** Minimal Task-4 adapter: catalog browsing plus a credential-gated stub stream. */
+declare class PlaceholderAdapter extends LlmAdapter {
+  private readonly deps;
+  constructor(deps: PlaceholderAdapterDeps);
+  providerInfo(provider: string): LlmProviderInfo;
+  listModels(provider: string): Promise<readonly LlmModelInfo[]>;
+  resolveModel(provider: string, model: string, _signal?: AbortSignal): Promise<LlmResolvedModelInfo>;
+  stream(options: GenerateOptions): AsyncIterable<StreamChunk>;
+}
+//#endregion
+//#region src/service.d.ts
+/**
+ * Settings namespace owned by this provider; the bundle row id. Annotated with
+ * the public `SettingsNamespace` brand type so the declaration rollup names the
+ * public type instead of inlining its underlying representation.
+ */
+declare const NS: SettingsNamespace;
+/** The one configurable-provider directory entry: the whole section is the profile. */
+declare const DIRECTORY_ENTRY: LlmConfigurableProvider;
+/** Cordis plugin factory: mount the provider's reversible Host effects. */
+declare function apply(ctx: Context, rawConfig?: SectionInput): void;
+/** Cordis service dependency: the plugin mounts only once `llm` is available. */
+declare const inject: readonly ["llm"];
+//#endregion
 //#region src/index.d.ts
 /** Stable plugin name, must match the patch row and package.json. */
 declare const name: "dsh-opencode-go-provider";
@@ -252,11 +403,5 @@ interface ProviderDescriptor {
 }
 /** Machine-consumed provider contract surfaced by the Host entry. */
 declare const provider: ProviderDescriptor;
-/**
- * Cordis plugin factory. Later todos register the provider's reversible
- * effects (settings namespace, credentials, adapter, catalog sync) on this
- * context; the row stays mountable and typed in the meantime.
- */
-declare function apply(ctx: Context): void;
 //#endregion
-export { type CatalogModel, type DeprecatedEntry, FOURTEEN_DAYS_MS, type ModelCost, type ModelsDevProvider, PROTOCOLS, PROVIDER_ID, type Patches, type PreviousState, type Protocol, ProviderDescriptor, QUARANTINE_REASON_CODES, QUARANTINE_SOURCES, type QuarantineReasonCode, type QuarantineRecord, type QuarantineSource, type ReconcileInput, type ReconcileResult, type ReconcileStats, apiKeyEnv, apply, bundleRowId, compareIds, name, parseDeprecatedFile, parseJsonFile, parseLiveIds, parseModelsDevProvider, parseModelsManifest, parsePatchesFile, parseQuarantineFile, provider, providerRoute, reconcile, renderDeprecatedFile, renderModelsManifest, renderPatchesFile, renderQuarantineFile, sdkToProtocol };
+export { type CatalogModel, Config, type Config as ConfigType, DEFAULTS, DIRECTORY_ENTRY, DISPLAY_NAME, type DeprecatedEntry, FOURTEEN_DAYS_MS, MISSING_CREDENTIAL_CODE, type ModelCost, type ModelsDevProvider, NOT_IMPLEMENTED_CODE, NS, PROTOCOLS, PROVIDER_ID, type Patches, PlaceholderAdapter, type PreviousState, type Protocol, ProviderDescriptor, QUARANTINE_REASON_CODES, QUARANTINE_SOURCES, type QuarantineReasonCode, type QuarantineRecord, type QuarantineSource, type ReconcileInput, type ReconcileResult, type ReconcileStats, type ResolvedConfig, apiKeyEnv, apply, assertServiceable, bundleRowId, compareIds, embeddedCatalogModels, inject, name, parseDeprecatedFile, parseJsonFile, parseLiveIds, parseModelsDevProvider, parseModelsManifest, parsePatchesFile, parseQuarantineFile, provider, providerRoute, reconcile, renderDeprecatedFile, renderModelsManifest, renderPatchesFile, renderQuarantineFile, resolveApiKey, resolveConfig, sdkToProtocol, withResolvedKey };

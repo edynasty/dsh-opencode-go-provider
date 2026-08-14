@@ -2,14 +2,12 @@
  * DSH Host entrypoint for the OpenCode Go provider bundle.
  *
  * The bundle row `llm-opencode-go` (cordis.patch.yml) mounts this module as a
- * Cordis plugin. Host service registration — settings namespace, credential
- * resolution, the multi-protocol adapter and catalog sync — is owned by later
- * contract todos; this entry stays a typed, loadable seam that exposes the
- * provider's stable contract values plus the verified catalog machinery
- * (reconciliation, boundary parsers, deterministic renderers) for consumers
- * and tests.
+ * Cordis plugin. The plugin factory wires the provider's reversible Host
+ * effects — settings namespace, per-operation credentials, the configurable-
+ * provider directory and the owned adapter route — while this entry keeps the
+ * stable contract values and the verified catalog machinery (reconciliation,
+ * boundary parsers, deterministic renderers) available to consumers and tests.
  */
-import type { Context } from "@deepseek-ai/cordis";
 import { API_KEY_ENV, BUNDLE_ROW_ID, PLUGIN_NAME, PROVIDER_ROUTE } from "./contract.ts";
 import { FOURTEEN_DAYS_MS } from "./constants.ts";
 import { reconcile } from "./reconcile.ts";
@@ -28,6 +26,11 @@ import {
   parsePatchesFile,
   parseQuarantineFile,
 } from "./state-file.ts";
+export { Config, DEFAULTS, assertServiceable, resolveConfig } from "./config.ts";
+export { MISSING_CREDENTIAL_CODE, resolveApiKey, withResolvedKey } from "./credentials.ts";
+export { embeddedCatalogModels } from "./catalog-loader.ts";
+export { DISPLAY_NAME, NOT_IMPLEMENTED_CODE, PlaceholderAdapter } from "./placeholder-adapter.ts";
+export { DIRECTORY_ENTRY, NS, apply, inject } from "./service.ts";
 
 export type {
   CatalogModel,
@@ -44,6 +47,7 @@ export type {
   ReconcileResult,
   ReconcileStats,
 } from "./types.ts";
+export type { Config as ConfigType, ResolvedConfig } from "./config.ts";
 export { PROTOCOLS, PROVIDER_ID, QUARANTINE_REASON_CODES, QUARANTINE_SOURCES } from "./types.ts";
 export { FOURTEEN_DAYS_MS, reconcile };
 export { parseLiveIds, parseModelsDevProvider, sdkToProtocol };
@@ -83,12 +87,3 @@ export const provider: ProviderDescriptor = {
   bundleRow: BUNDLE_ROW_ID,
   apiKeyEnv: API_KEY_ENV,
 };
-
-/**
- * Cordis plugin factory. Later todos register the provider's reversible
- * effects (settings namespace, credentials, adapter, catalog sync) on this
- * context; the row stays mountable and typed in the meantime.
- */
-export function apply(ctx: Context): void {
-  void ctx;
-}

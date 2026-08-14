@@ -87,6 +87,14 @@ describe("packed artifact", () => {
         join(consumerDir, "node_modules", "dsh-opencode-go-provider"),
         "dir",
       );
+      // A DSH host provides the provider's peer packages; mirror that by
+      // exposing the repo's installed @deepseek-ai scope so the packed root
+      // (which wires the real service) can resolve its host peers.
+      await symlink(
+        join(REPO_ROOT, "node_modules", "@deepseek-ai"),
+        join(consumerDir, "node_modules", "@deepseek-ai"),
+        "dir",
+      );
       await writeFile(
         join(consumerDir, "package.json"),
         JSON.stringify({ name: "consumer", private: true, type: "module" }, null, 2),
