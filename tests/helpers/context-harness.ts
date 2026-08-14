@@ -13,11 +13,18 @@
  */
 import { Context, type Fiber } from "@deepseek-ai/cordis";
 import type { CredentialInfo, CredentialRef, ResolvedCredential } from "@deepseek-ai/dsh-credentials";
-import { CredentialProvider } from "@deepseek-ai/dsh-credentials";
+import { CredentialProvider, credentialRef } from "@deepseek-ai/dsh-credentials";
 import type { GenerateOptions } from "@deepseek-ai/dsh-llm";
 import { LlmAdapter, LlmRuntime } from "@deepseek-ai/dsh-llm";
 import type { SettingsNamespace } from "@deepseek-ai/dsh-settings";
 import { SettingsProvider } from "@deepseek-ai/dsh-settings";
+import { mkdtempSync } from "node:fs";
+import { rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach } from "vitest";
+import type { SyncFetch } from "../../src/sync.ts";
+import { failClosedFetch } from "./fake-network.ts";
 import type { SectionInput } from "../../src/config.ts";
 import { apply } from "../../src/service.ts";
 
@@ -113,7 +120,13 @@ export interface BootServicesOptions {
   readonly settingsDoc?: Record<string, unknown>;
   readonly withSettings?: boolean;
   readonly withCredentials?: boolean;
+  /** Pre-populate the in-memory credentials store before the plugin mounts. */
+  readonly credentials?: Readonly<Record<string, string>>;
   readonly launchEnvironment?: FakeLaunchEnvironment;
+  /** Injected network seam; defaults to a fail-closed guard (never real traffic). */
+  readonly fetch?: SyncFetch;
+  /** Injected DSH home; defaults to a per-boot temp dir, cleaned up after each test. */
+  readonly home?: string;
 }
 
 export interface BootServicesResult {
@@ -124,10 +137,20 @@ export interface BootServicesResult {
   readonly llm: LlmRuntime;
 }
 
+const bootHomes: string[] = [];
+afterEach(async () => {
+  await Promise.all(bootHomes.splice(0).map((home) => rm(home, { recursive: true, force: true })));
+});
+
 /** Mount the host services (and nothing else) on a real Cordis context. */
 export async function bootServices(options: BootServicesOptions = {}): Promise<BootServicesResult> {
   const ctx = new Context();
   const credentials = options.withCredentials === false ? undefined : new MemoryCredentials(ctx);
+  if (credentials !== undefined && options.credentials !== undefined) {
+    for (const [name, value] of Object.entries(options.credentials)) {
+      await credentials.set(credentialRef(name), value);
+    }
+  }
   const llm = new LlmRuntime(ctx);
   let settings: SettingsProvider | undefined;
   let settingsFiber: Fiber | undefined;
@@ -138,6 +161,12 @@ export async function bootServices(options: BootServicesOptions = {}): Promise<B
   if (options.launchEnvironment !== undefined) {
     ctx.provide("launchEnvironment", options.launchEnvironment);
   }
+  // The service resolves its network and cache-home seams through the context;
+  // a booted plugin can never touch a real endpoint or real DSH_HOME.
+  ctx.provide("opencodeGoFetch", options.fetch ?? failClosedFetch());
+  const home = options.home ?? mkdtempSync(join(tmpdir(), "dsh-opencode-go-provider-harness-"));
+  if (options.home === undefined) bootHomes.push(home);
+  ctx.provide("opencodeGoHome", home);
   return { ctx, credentials, settings, settingsFiber, llm };
 }
 

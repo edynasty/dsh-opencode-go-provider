@@ -28,11 +28,17 @@ import type {
   DirectoryRegistrationHandle,
   LlmConfigurableProvider,
 } from "@deepseek-ai/dsh-llm";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { BUNDLE_ROW_ID, DISPLAY_NAME, PROVIDER_ROUTE } from "./contract.ts";
 import { Config, assertServiceable } from "./config.ts";
 import type { Config as ConfigType, SectionInput } from "./config.ts";
 import { resolveApiKey } from "./credentials.ts";
-import { embeddedCatalogModels } from "./catalog-loader.ts";
+import { embeddedPatches } from "./catalog-loader.ts";
+import { resolveCachePath, writeCacheAtomic } from "./cache.ts";
+import { CatalogLifecycle } from "./lifecycle.ts";
+import { nodeFetch } from "./sync.ts";
+import type { Scheduler, SyncFetch } from "./sync.ts";
 import { OpenCodeGoAdapter } from "./adapter.ts";
 
 /**
@@ -78,6 +84,47 @@ function isUnloading(ctx: Context): boolean {
   return state === FIBER_UNLOADING || state === FIBER_DISPOSED;
 }
 
+/** Narrow a host-provided fetch (tests inject one); production falls back to nodeFetch. */
+function isSyncFetchLike(value: unknown): value is SyncFetch {
+  return typeof value === "function";
+}
+
+/** The network seam: a harness-provided fetch, or the real fetch adapter. */
+function resolveHostFetch(ctx: Context): SyncFetch {
+  const provided = ctx.get("opencodeGoFetch");
+  return isSyncFetchLike(provided) ? provided : nodeFetch();
+}
+
+/** The cache home: a harness-provided path, else $DSH_HOME, else ~/.dsh. */
+function resolveDshHome(ctx: Context): string {
+  const provided = ctx.get("opencodeGoHome");
+  if (typeof provided === "string" && provided.length > 0) return provided;
+  return process.env.DSH_HOME ?? join(homedir(), ".dsh");
+}
+
+/** Production scheduler: real timers, unref'd so they never hold the host open. */
+function defaultScheduler(): Scheduler {
+  const timers = new Map<number, ReturnType<typeof setTimeout>>();
+  let nextId = 1;
+  return {
+    setTimer: (callback, delayMs) => {
+      const id = nextId;
+      nextId += 1;
+      const timer = setTimeout(callback, delayMs);
+      timer.unref?.();
+      timers.set(id, timer);
+      return { id };
+    },
+    clearTimer: (handle) => {
+      const timer = timers.get(handle.id);
+      if (timer !== undefined) {
+        timers.delete(handle.id);
+        clearTimeout(timer);
+      }
+    },
+  };
+}
+
 /** Cordis plugin factory: mount the provider's reversible Host effects. */
 export function apply(ctx: Context, rawConfig?: SectionInput): void {
   // Gate the composition entry BEFORE any registration side effect.
@@ -86,10 +133,23 @@ export function apply(ctx: Context, rawConfig?: SectionInput): void {
 
   // The adapter and route keep a live source thunk, not a startup snapshot.
   let current: () => ConfigType = () => entry;
+  // The SWR catalog lifecycle owns the served snapshot; its network, clock,
+  // scheduler, cache home and credential seam are all injected so a harness
+  // can fail-close the network and point the cache at a temp home.
+  const lifecycle = new CatalogLifecycle({
+    fetch: resolveHostFetch(ctx),
+    resolveKey: (ref) => resolveApiKey(ctx, ref),
+    currentConfig: () => current(),
+    clock: { now: () => new Date() },
+    scheduler: defaultScheduler(),
+    cachePath: () => resolveCachePath(resolveDshHome(ctx)),
+    patches: embeddedPatches(),
+    persistCache: writeCacheAtomic,
+  });
   const adapter = new OpenCodeGoAdapter({
     currentConfig: () => current(),
     resolveKey: (ref) => resolveApiKey(ctx, ref),
-    catalog: () => embeddedCatalogModels(),
+    catalog: () => lifecycle.catalog(),
     resolveAttachments: () => ctx.get("attachments"),
   });
 
@@ -128,6 +188,7 @@ export function apply(ctx: Context, rawConfig?: SectionInput): void {
       if (isUnloading(ctx)) return;
       ensureDirectory();
       ensureRegistration();
+      lifecycle.notifyConfigChanged();
     });
   };
 
@@ -155,6 +216,7 @@ export function apply(ctx: Context, rawConfig?: SectionInput): void {
       current = () => entry;
       ensureDirectory();
       ensureRegistration();
+      lifecycle.notifyConfigChanged();
     });
     if (sctx.settings.get(NS) === undefined) {
       attachScope(
@@ -162,6 +224,12 @@ export function apply(ctx: Context, rawConfig?: SectionInput): void {
       );
     }
   });
+
+  // The lifecycle rides the plugin fiber: disposal stops scheduling, aborts
+  // any active source pair and settles the single-flight. The disposer
+  // returns the dispose promise so fiber teardown awaits it.
+  ctx.effect(() => () => lifecycle.dispose());
+  lifecycle.start();
 }
 
 /** Cordis service dependency: the plugin mounts only once `llm` is available. */

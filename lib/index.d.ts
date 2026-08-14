@@ -348,8 +348,7 @@ declare function withResolvedKey<T>(ctx: Context, ref: CredentialRef, run: (key:
 //#endregion
 //#region src/catalog-loader.d.ts
 /**
- * Return the parsed embedded catalog models, ascending by id (the artifact is
- * already sorted; the parsers preserve order).
+ * Return the parsed embedded catalog models, ascending by id.
  * @returns the catalog models.
  */
 declare function embeddedCatalogModels(): readonly CatalogModel[];

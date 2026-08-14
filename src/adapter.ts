@@ -165,11 +165,14 @@ export class OpenCodeGoAdapter extends LlmAdapter {
   }
 
   async *stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
-    // Credential gate first: the per-operation snapshot and key resolution
-    // happen before any callback or network; a missing or invalid key throws.
+    // The snapshot is captured at invocation, before any await: a catalog
+    // swap while credentials resolve must not change this request's
+    // model/provider/baseUrl identity.
+    const snapshot = this.current();
+    // Credential gate: the per-operation config and key resolution happen
+    // before any callback or network; a missing or invalid key throws.
     const resolved: ResolvedConfig = resolveConfig(this.deps.currentConfig());
     const key = await this.deps.resolveKey(resolved.apiKeyEnv);
-    const snapshot = this.current();
     const entry = this.modelOf(snapshot, options.provider, options.model);
     const piModel = toPiModel(entry);
     assertSupportedOptions(options);
