@@ -32,15 +32,26 @@ function runSync(command: string, args: readonly string[], cwd: string): string 
 
 /** Minimal strict consumer importing the packed root through its types export. */
 const CONSUMER_TS = `
-import { provider, NS, Config } from "dsh-opencode-go-provider";
+import { provider, NS, Config, DISPLAY_NAME, OpenCodeGoAdapter, UNKNOWN_MODEL } from "dsh-opencode-go-provider";
 import { settingsNamespace, type SettingsNamespace } from "@deepseek-ai/dsh-settings";
+import type { LlmAdapter } from "@deepseek-ai/dsh-llm";
 
 const ns: SettingsNamespace = NS;
 const same: SettingsNamespace = settingsNamespace(provider.bundleRow);
 const resolved = Config({ refreshMs: 1_800_000 });
+const adapter = new OpenCodeGoAdapter({
+  currentConfig: () => resolved,
+  resolveKey: () => Promise.resolve("sk-consumer-fake"),
+  catalog: () => [],
+});
+const asAdapter: LlmAdapter = adapter;
+const displayName: string = DISPLAY_NAME;
+const unknownCode: string = UNKNOWN_MODEL;
 void ns;
 void same;
-void resolved;
+void asAdapter;
+void displayName;
+void unknownCode;
 `;
 
 const CONSUMER_TSCONFIG = JSON.stringify(
@@ -90,6 +101,14 @@ describe("packed public declarations", () => {
       await symlink(
         join(REPO_ROOT, "node_modules", "@deepseek-ai"),
         join(consumerDir, "node_modules", "@deepseek-ai"),
+        "dir",
+      );
+      // A real DSH host provides the pi-ai runtime; the packed declarations of
+      // the Task 5 adapter reference its public types, so the consumer mirrors
+      // the host by linking the same dev-installed scope.
+      await symlink(
+        join(REPO_ROOT, "node_modules", "@earendil-works"),
+        join(consumerDir, "node_modules", "@earendil-works"),
         "dir",
       );
       await writeFile(join(consumerDir, "consumer.ts"), CONSUMER_TS);

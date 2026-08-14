@@ -1,3 +1,8 @@
+# Optional transitive build scripts of @earendil-works/pi-ai (Google Vertex
+# paths only; never needed by the openai/anthropic transports this bundle uses).
+allowBuilds:
+  '@google/genai': false
+  protobufjs: false
 # DSH rc.6 Host satisfies the provider's peerDependencies at install time.
 # Do not auto-install peers into this repository's own node_modules during
 # development; only devDependencies used by the local gates are installed here.

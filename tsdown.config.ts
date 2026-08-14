@@ -3,6 +3,7 @@ import type { UserConfig } from "tsdown";
 /** Host runtime packages provided by the DSH profile; never bundled. */
 const HOST_EXTERNALS = [
   "@earendil-works/pi-ai",
+  "@earendil-works/pi-ai/**",
   "@deepseek-ai/cordis",
   "@deepseek-ai/schemastery",
   "@deepseek-ai/dsh-agent",

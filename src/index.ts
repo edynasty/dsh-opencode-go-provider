@@ -29,8 +29,29 @@ import {
 export { Config, DEFAULTS, assertServiceable, resolveConfig } from "./config.ts";
 export { MISSING_CREDENTIAL_CODE, resolveApiKey, withResolvedKey } from "./credentials.ts";
 export { embeddedCatalogModels } from "./catalog-loader.ts";
-export { DISPLAY_NAME, NOT_IMPLEMENTED_CODE, PlaceholderAdapter } from "./placeholder-adapter.ts";
+export {
+  ABORTED,
+  AUTH,
+  INVALID_REQUEST,
+  INVALID_REPLAY_STATE,
+  NO_ADAPTER,
+  PI_AI_ERROR,
+  RATE_LIMIT,
+  SERVER,
+  STREAM_CLOSED,
+  TIMEOUT,
+  TRANSPORT,
+  UNKNOWN_MODEL,
+  UNSUPPORTED_CONTENT,
+  UNSUPPORTED_OPTION,
+  UNSUPPORTED_PROTOCOL,
+  UNSUPPORTED_REASONING_EFFORT,
+} from "./errors.ts";
+export { classifyProviderFailure, llmError } from "./errors.ts";
+export { OpenCodeGoAdapter } from "./adapter.ts";
+export type { OpenCodeGoAdapterOptions } from "./adapter.ts";
 export { DIRECTORY_ENTRY, NS, apply, inject } from "./service.ts";
+export { DISPLAY_NAME } from "./contract.ts";
 
 export type {
   CatalogModel,

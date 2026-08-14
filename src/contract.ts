@@ -18,3 +18,6 @@ export const BUNDLE_ROW_ID = "llm-opencode-go" as const;
 
 /** Provider route registered on ctx.llm and addressed by the settings card. */
 export const PROVIDER_ROUTE = "opencode-go" as const;
+
+/** Display name served by the provider directory and selectors. */
+export const DISPLAY_NAME = "OpenCode Go" as const;

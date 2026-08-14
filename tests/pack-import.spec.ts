@@ -95,6 +95,12 @@ describe("packed artifact", () => {
         join(consumerDir, "node_modules", "@deepseek-ai"),
         "dir",
       );
+      // The Task 5 adapter imports the pi-ai runtime the host provides too.
+      await symlink(
+        join(REPO_ROOT, "node_modules", "@earendil-works"),
+        join(consumerDir, "node_modules", "@earendil-works"),
+        "dir",
+      );
       await writeFile(
         join(consumerDir, "package.json"),
         JSON.stringify({ name: "consumer", private: true, type: "module" }, null, 2),

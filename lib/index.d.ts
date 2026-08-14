@@ -1,8 +1,9 @@
 import z from "@deepseek-ai/schemastery";
 import { CredentialRef, credentialRef } from "@deepseek-ai/dsh-credentials";
-import { GenerateOptions, LlmAdapter, LlmConfigurableProvider, LlmModelInfo, LlmProviderInfo, LlmResolvedModelInfo, StreamChunk } from "@deepseek-ai/dsh-llm";
+import { GenerateOptions, LlmAdapter, LlmConfigurableProvider, LlmError, LlmErrorOptions, LlmModelInfo, LlmProviderInfo, LlmResolvedModelInfo, StreamChunk } from "@deepseek-ai/dsh-llm";
 import { Context } from "@deepseek-ai/cordis";
 import { SettingsNamespace } from "@deepseek-ai/dsh-settings";
+import { AttachmentStore } from "@deepseek-ai/dsh-attachment";
 //#region src/contract.d.ts
 /**
  * Shared Host/Client contract values for the OpenCode Go provider bundle.
@@ -20,6 +21,8 @@ declare const API_KEY_ENV: "OPENCODE_GO_API_KEY";
 declare const BUNDLE_ROW_ID: "llm-opencode-go";
 /** Provider route registered on ctx.llm and addressed by the settings card. */
 declare const PROVIDER_ROUTE: "opencode-go";
+/** Display name served by the provider directory and selectors. */
+declare const DISPLAY_NAME: "OpenCode Go";
 //#endregion
 //#region src/constants.d.ts
 /** Shared grace-period constant, free of module cycles. */
@@ -351,24 +354,79 @@ declare function withResolvedKey<T>(ctx: Context, ref: CredentialRef, run: (key:
  */
 declare function embeddedCatalogModels(): readonly CatalogModel[];
 //#endregion
-//#region src/placeholder-adapter.d.ts
-/** Stable machine code for Task 5 functionality being requested on this contract. */
-declare const NOT_IMPLEMENTED_CODE = "NOT_IMPLEMENTED";
-/** Display name served by the provider directory and selectors. */
-declare const DISPLAY_NAME = "OpenCode Go";
+//#region src/errors.d.ts
+/** Credential/authorization failures (HTTP 401/403). */
+declare const AUTH = "AUTH";
+/** Provider rate limiting (HTTP 429). */
+declare const RATE_LIMIT = "RATE_LIMIT";
+/** Provider-side server failures (HTTP 5xx). */
+declare const SERVER = "SERVER";
+/** Connection, DNS, socket or stream failures. */
+declare const TRANSPORT = "TRANSPORT";
+/** The configured per-operation idle deadline elapsed. */
+declare const TIMEOUT = "TIMEOUT";
+/** The caller cancelled the request. */
+declare const ABORTED = "ABORTED";
+/** HTTP 400 / invalid request wording. */
+declare const INVALID_REQUEST = "INVALID_REQUEST";
+/** Provider error text no stable class matches. */
+declare const PI_AI_ERROR = "PI_AI_ERROR";
+/** A model id the catalog does not describe. */
+declare const UNKNOWN_MODEL = "UNKNOWN_MODEL";
+/** A provider route this adapter does not own. */
+declare const NO_ADAPTER = "NO_ADAPTER";
+/** A request option the transports cannot express. */
+declare const UNSUPPORTED_OPTION = "UNSUPPORTED_OPTION";
+/** Media or message content the selected model cannot carry. */
+declare const UNSUPPORTED_CONTENT = "UNSUPPORTED_CONTENT";
+/** A reasoning effort the selected model does not offer. */
+declare const UNSUPPORTED_REASONING_EFFORT = "UNSUPPORTED_REASONING_EFFORT";
+/** Catalog metadata naming a wire protocol this bundle cannot serve. */
+declare const UNSUPPORTED_PROTOCOL = "UNSUPPORTED_PROTOCOL";
+/** A pi-ai event stream ended without a terminal event. */
+declare const STREAM_CLOSED = "STREAM_CLOSED";
+/** Durable replay metadata failed validation. */
+declare const INVALID_REPLAY_STATE = "INVALID_REPLAY_STATE";
+/** Construct one typed adapter failure with the stable code taxonomy. */
+declare function llmError(message: string, code: string, options?: LlmErrorOptions): LlmError;
+/**
+ * Classify provider error text into the stable code taxonomy. The provider
+ * message carries the HTTP status and transport details pi-ai formatted, so a
+ * text classifier is the deterministic seam the same way the host's own
+ * deepseek adapter classifies. An explicit HTTP 429 wins over quota wording:
+ * the status is the authoritative signal, and the harness routes RATE_LIMIT
+ * and QUOTA differently.
+ * @param detail - provider error text (status, code and message joined).
+ * @returns the stable machine-routable code.
+ */
+declare function classifyProviderFailure(detail: string): string;
+//#endregion
+//#region src/adapter.d.ts
 /** Dependencies the service wires in; the catalog thunk lets Task 6 hot-swap snapshots. */
-interface PlaceholderAdapterDeps {
+interface OpenCodeGoAdapterOptions {
   /** Live config source; re-read on every operation so settings hot-apply. */
   readonly currentConfig: () => Config;
   /** Per-operation credential resolver, gating every stream before network. */
   readonly resolveKey: (ref: CredentialRef) => Promise<string>;
   /** Embedded catalog source; advisory and credential-free. */
   readonly catalog: () => readonly CatalogModel[];
+  /** Optional durable attachment service for image input. */
+  readonly resolveAttachments?: () => AttachmentStore | undefined;
 }
-/** Minimal Task-4 adapter: catalog browsing plus a credential-gated stub stream. */
-declare class PlaceholderAdapter extends LlmAdapter {
+/**
+ * OpenCode Go single-route adapter. Each operation reads the current catalog
+ * and config, so a change reaches the next request without a restart.
+ */
+declare class OpenCodeGoAdapter extends LlmAdapter {
   private readonly deps;
-  constructor(deps: PlaceholderAdapterDeps);
+  private snapshot;
+  constructor(deps: OpenCodeGoAdapterOptions);
+  /** The snapshot for the current catalog; memoized by collection identity. */
+  private current;
+  /** Refuse a provider route this adapter does not own. */
+  private profileOf;
+  /** The catalog entry for one exact route/model pair within one snapshot. */
+  private modelOf;
   providerInfo(provider: string): LlmProviderInfo;
   listModels(provider: string): Promise<readonly LlmModelInfo[]>;
   resolveModel(provider: string, model: string, _signal?: AbortSignal): Promise<LlmResolvedModelInfo>;
@@ -404,4 +462,4 @@ interface ProviderDescriptor {
 /** Machine-consumed provider contract surfaced by the Host entry. */
 declare const provider: ProviderDescriptor;
 //#endregion
-export { type CatalogModel, Config, type Config as ConfigType, DEFAULTS, DIRECTORY_ENTRY, DISPLAY_NAME, type DeprecatedEntry, FOURTEEN_DAYS_MS, MISSING_CREDENTIAL_CODE, type ModelCost, type ModelsDevProvider, NOT_IMPLEMENTED_CODE, NS, PROTOCOLS, PROVIDER_ID, type Patches, PlaceholderAdapter, type PreviousState, type Protocol, ProviderDescriptor, QUARANTINE_REASON_CODES, QUARANTINE_SOURCES, type QuarantineReasonCode, type QuarantineRecord, type QuarantineSource, type ReconcileInput, type ReconcileResult, type ReconcileStats, type ResolvedConfig, apiKeyEnv, apply, assertServiceable, bundleRowId, compareIds, embeddedCatalogModels, inject, name, parseDeprecatedFile, parseJsonFile, parseLiveIds, parseModelsDevProvider, parseModelsManifest, parsePatchesFile, parseQuarantineFile, provider, providerRoute, reconcile, renderDeprecatedFile, renderModelsManifest, renderPatchesFile, renderQuarantineFile, resolveApiKey, resolveConfig, sdkToProtocol, withResolvedKey };
+export { ABORTED, AUTH, type CatalogModel, Config, type Config as ConfigType, DEFAULTS, DIRECTORY_ENTRY, DISPLAY_NAME, type DeprecatedEntry, FOURTEEN_DAYS_MS, INVALID_REPLAY_STATE, INVALID_REQUEST, MISSING_CREDENTIAL_CODE, type ModelCost, type ModelsDevProvider, NO_ADAPTER, NS, OpenCodeGoAdapter, type OpenCodeGoAdapterOptions, PI_AI_ERROR, PROTOCOLS, PROVIDER_ID, type Patches, type PreviousState, type Protocol, ProviderDescriptor, QUARANTINE_REASON_CODES, QUARANTINE_SOURCES, type QuarantineReasonCode, type QuarantineRecord, type QuarantineSource, RATE_LIMIT, type ReconcileInput, type ReconcileResult, type ReconcileStats, type ResolvedConfig, SERVER, STREAM_CLOSED, TIMEOUT, TRANSPORT, UNKNOWN_MODEL, UNSUPPORTED_CONTENT, UNSUPPORTED_OPTION, UNSUPPORTED_PROTOCOL, UNSUPPORTED_REASONING_EFFORT, apiKeyEnv, apply, assertServiceable, bundleRowId, classifyProviderFailure, compareIds, embeddedCatalogModels, inject, llmError, name, parseDeprecatedFile, parseJsonFile, parseLiveIds, parseModelsDevProvider, parseModelsManifest, parsePatchesFile, parseQuarantineFile, provider, providerRoute, reconcile, renderDeprecatedFile, renderModelsManifest, renderPatchesFile, renderQuarantineFile, resolveApiKey, resolveConfig, sdkToProtocol, withResolvedKey };

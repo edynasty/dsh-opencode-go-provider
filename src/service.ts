@@ -28,12 +28,12 @@ import type {
   DirectoryRegistrationHandle,
   LlmConfigurableProvider,
 } from "@deepseek-ai/dsh-llm";
-import { BUNDLE_ROW_ID, PROVIDER_ROUTE } from "./contract.ts";
+import { BUNDLE_ROW_ID, DISPLAY_NAME, PROVIDER_ROUTE } from "./contract.ts";
 import { Config, assertServiceable } from "./config.ts";
 import type { Config as ConfigType, SectionInput } from "./config.ts";
 import { resolveApiKey } from "./credentials.ts";
 import { embeddedCatalogModels } from "./catalog-loader.ts";
-import { DISPLAY_NAME, PlaceholderAdapter } from "./placeholder-adapter.ts";
+import { OpenCodeGoAdapter } from "./adapter.ts";
 
 /**
  * Settings namespace owned by this provider; the bundle row id. Annotated with
@@ -86,10 +86,11 @@ export function apply(ctx: Context, rawConfig?: SectionInput): void {
 
   // The adapter and route keep a live source thunk, not a startup snapshot.
   let current: () => ConfigType = () => entry;
-  const adapter = new PlaceholderAdapter({
+  const adapter = new OpenCodeGoAdapter({
     currentConfig: () => current(),
     resolveKey: (ref) => resolveApiKey(ctx, ref),
     catalog: () => embeddedCatalogModels(),
+    resolveAttachments: () => ctx.get("attachments"),
   });
 
   let directory: DirectoryRegistrationHandle | undefined;

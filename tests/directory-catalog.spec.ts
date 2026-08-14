@@ -12,7 +12,8 @@ import { credentialRef } from "@deepseek-ai/dsh-credentials";
 import { withResolvedKey } from "../src/credentials.ts";
 import { Config } from "../src/config.ts";
 import { embeddedCatalogModels } from "../src/catalog-loader.ts";
-import { NOT_IMPLEMENTED_CODE, PlaceholderAdapter } from "../src/placeholder-adapter.ts";
+import { UNKNOWN_MODEL } from "../src/errors.ts";
+import { OpenCodeGoAdapter } from "../src/adapter.ts";
 import { boot, requireCredentials, streamCodes } from "./helpers/context-harness.ts";
 
 const MISSING_CREDENTIAL = "MISSING_CREDENTIAL";
@@ -98,15 +99,19 @@ describe("stream credential gate (end to end)", () => {
     expect(codes).toEqual(["INVALID_CREDENTIAL"]);
   });
 
-  it("fails with the stable not-yet-implemented error once a valid key exists", async () => {
-    // Given: a valid stored credential.
+  it("passes the credential gate and drives the real adapter once a valid key exists", async () => {
+    // Given: a valid stored credential and an already-cancelled request.
     const { llm, credentials } = await boot({ withCredentials: true });
     const store = requireCredentials({ credentials });
     await store.set(credentialRef("OPENCODE_GO_API_KEY"), FAKE_SECRET_A);
+    const controller = new AbortController();
+    controller.abort();
     // When: a generation stream is requested through the real runtime.
-    const codes = await streamCodes(llm);
-    // Then: the credential gate passes and Task 5 functionality is refused loudly.
-    expect(codes).toEqual([NOT_IMPLEMENTED_CODE]);
+    const codes = await streamCodes(llm, { signal: controller.signal });
+    // Then: the Task 5 adapter (not the placeholder seam) takes the request —
+    // the pre-cancelled signal yields a deterministic ABORTED finish with zero
+    // network, whereas the placeholder refused with NOT_IMPLEMENTED.
+    expect(codes).toEqual(["ABORTED"]);
   });
 });
 
@@ -115,7 +120,7 @@ describe("adapter per-operation resolution", () => {
     // Given: an adapter whose config source can be swapped (the dynamic source).
     let source = Config({ apiKeyEnv: "OPENCODE_GO_API_KEY" });
     const resolved: string[] = [];
-    const adapter = new PlaceholderAdapter({
+    const adapter = new OpenCodeGoAdapter({
       currentConfig: () => source,
       resolveKey: (ref) => {
         resolved.push(ref);
@@ -128,7 +133,7 @@ describe("adapter per-operation resolution", () => {
       try {
         for await (const _chunk of adapter.stream({
           provider: "opencode-go",
-          model: "grok-4.5",
+          model: "no-such-catalog-model",
           messages: [],
         })) {
           // the stream must never yield a chunk before the gate fails
@@ -138,9 +143,9 @@ describe("adapter per-operation resolution", () => {
         return error instanceof LlmError ? error.code : "NO_CODE";
       }
     };
-    expect(await failCode()).toBe(NOT_IMPLEMENTED_CODE);
+    expect(await failCode()).toBe(UNKNOWN_MODEL);
     source = Config({ apiKeyEnv: "OPENCODE_GO_ALT_KEY" });
-    expect(await failCode()).toBe(NOT_IMPLEMENTED_CODE);
+    expect(await failCode()).toBe(UNKNOWN_MODEL);
     // Then: each operation resolved the reference active at that moment.
     expect(resolved).toEqual(["OPENCODE_GO_API_KEY", "OPENCODE_GO_ALT_KEY"]);
   });

@@ -191,15 +191,24 @@ export function countTopologyAnnouncements(ctx: Context): { readonly count: () =
   return { count: () => announced };
 }
 
-/** Collect the terminal error codes a generation stream produces. */
-export async function streamCodes(llm: LlmRuntime): Promise<readonly string[]> {
+/**
+ * Collect the terminal error codes a generation stream produces. The default
+ * model is a shipped catalog entry: the harness resolves exact model metadata
+ * before the adapter streams, so the credential-gate tests need a resolvable
+ * model, while `extra` lets a test force a pre-network outcome.
+ */
+export async function streamCodes(
+  llm: LlmRuntime,
+  extra?: Partial<Pick<GenerateOptions, "model" | "signal" | "messages">>,
+): Promise<readonly string[]> {
   const codes: string[] = [];
   for await (const chunk of llm.stream({
     provider: "opencode-go",
-    model: "grok-4.5",
+    model: "deepseek-v4-flash",
     messages: [],
+    ...extra,
   })) {
-    if (chunk.type === "finish" && chunk.reason.kind === "error") {
+    if (chunk.type === "finish" && (chunk.reason.kind === "error" || chunk.reason.kind === "aborted")) {
       codes.push(chunk.reason.failure.code);
     }
   }

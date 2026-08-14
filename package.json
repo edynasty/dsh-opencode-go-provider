@@ -95,6 +95,7 @@
     "@deepseek-ai/dsh-settings": "0.1.0-rc.6",
     "@deepseek-ai/dsh-timeout": "0.1.0-rc.6",
     "@deepseek-ai/schemastery": "^3.18.1",
+    "@earendil-works/pi-ai": "0.82.1",
     "@types/node": "^22.20.0",
     "publint": "^0.3.23",
     "tsdown": "^0.22.2",
