@@ -1,0 +1,8 @@
+{
+  "baseUrlByProtocol": {
+    "anthropic-messages": {
+      "baseUrl": "https://opencode.ai/zen/go",
+      "evidence": "opencode.ai/docs/go endpoint table 2026-08-14: @ai-sdk/anthropic endpoint https://opencode.ai/zen/go/v1/messages implies SDK base URL without the /v1 path"
+    }
+  }
+}

@@ -19,11 +19,16 @@
       "types": "./lib/client.d.ts",
       "default": "./lib/client.js"
     },
+    "./catalog/models.json": "./catalog/models.json",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
   "files": [
     "lib",
+    "catalog/models.json",
+    "catalog/patches.json",
+    "catalog/deprecated.json",
+    "catalog/quarantine.json",
     "cordis.patch.yml",
     "README.md",
     "LICENSE",
@@ -50,6 +55,7 @@
     "publint": "publint",
     "package-contract": "vitest run tests/package-contract.spec.ts",
     "pack:check": "node scripts/check-pack.mjs",
+    "update:models": "node scripts/update-models.ts",
     "check": "tsc -p tsconfig.json && tsc -p tsconfig.client.json && vitest run && tsdown && publint && node scripts/check-pack.mjs && vitest run tests/package-contract.spec.ts"
   },
   "peerDependencies": {

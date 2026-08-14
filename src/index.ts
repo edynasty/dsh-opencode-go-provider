@@ -5,10 +5,62 @@
  * Cordis plugin. Host service registration — settings namespace, credential
  * resolution, the multi-protocol adapter and catalog sync — is owned by later
  * contract todos; this entry stays a typed, loadable seam that exposes the
- * provider's stable contract values to consumers and tests.
+ * provider's stable contract values plus the verified catalog machinery
+ * (reconciliation, boundary parsers, deterministic renderers) for consumers
+ * and tests.
  */
 import type { Context } from "@deepseek-ai/cordis";
 import { API_KEY_ENV, BUNDLE_ROW_ID, PLUGIN_NAME, PROVIDER_ROUTE } from "./contract.ts";
+import { FOURTEEN_DAYS_MS } from "./constants.ts";
+import { reconcile } from "./reconcile.ts";
+import { parseLiveIds, parseModelsDevProvider, sdkToProtocol } from "./models-dev.ts";
+import {
+  compareIds,
+  renderDeprecatedFile,
+  renderModelsManifest,
+  renderPatchesFile,
+  renderQuarantineFile,
+} from "./catalog.ts";
+import {
+  parseDeprecatedFile,
+  parseJsonFile,
+  parseModelsManifest,
+  parsePatchesFile,
+  parseQuarantineFile,
+} from "./state-file.ts";
+
+export type {
+  CatalogModel,
+  DeprecatedEntry,
+  ModelCost,
+  ModelsDevProvider,
+  Patches,
+  PreviousState,
+  Protocol,
+  QuarantineRecord,
+  QuarantineReasonCode,
+  QuarantineSource,
+  ReconcileInput,
+  ReconcileResult,
+  ReconcileStats,
+} from "./types.ts";
+export { PROTOCOLS, PROVIDER_ID, QUARANTINE_REASON_CODES, QUARANTINE_SOURCES } from "./types.ts";
+export { FOURTEEN_DAYS_MS, reconcile };
+export { parseLiveIds, parseModelsDevProvider, sdkToProtocol };
+export {
+  compareIds,
+  renderDeprecatedFile,
+  renderModelsManifest,
+  renderPatchesFile,
+  renderQuarantineFile,
+};
+export {
+  parseDeprecatedFile,
+  parseJsonFile,
+  parseModelsManifest,
+  parsePatchesFile,
+  parseQuarantineFile,
+};
 
 /** Stable plugin name, must match the patch row and package.json. */
 export const name = PLUGIN_NAME;

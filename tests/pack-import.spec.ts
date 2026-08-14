@@ -136,6 +136,20 @@ describe("packed artifact", () => {
           (p) => p.startsWith("src/") || p.startsWith("tests/") || p.includes("node_modules") || p.endsWith(".tgz"),
         ),
       ).toBe(false);
+
+      // ...the runtime catalog artifacts ship, but never the test fixtures.
+      for (const artifact of ["catalog/models.json", "catalog/patches.json", "catalog/deprecated.json", "catalog/quarantine.json"]) {
+        expect(packedPaths).toContain(artifact);
+      }
+      expect(packedPaths.some((p) => p.startsWith("catalog/fixtures/"))).toBe(false);
+
+      // ...the shipped catalog never claims synthetic live provenance: its
+      // availability is unverified, the probe is absent, quarantine is empty.
+      const modelsText = await readFile(join(pkgDir, "catalog", "models.json"), "utf8");
+      const shippedQuarantine: unknown = JSON.parse(await readFile(join(pkgDir, "catalog", "quarantine.json"), "utf8"));
+      expect(modelsText).toContain('"kind": "unverified"');
+      expect(modelsText).not.toContain("synthetic-unknown-live-probe");
+      expect(shippedQuarantine).toEqual([]);
     } finally {
       await rm(tempRoot, { recursive: true, force: true });
     }

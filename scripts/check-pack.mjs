@@ -21,13 +21,17 @@ const required = [
   'lib/index.d.ts',
   'lib/client.js',
   'lib/client.d.ts',
+  'catalog/models.json',
+  'catalog/patches.json',
+  'catalog/deprecated.json',
+  'catalog/quarantine.json',
 ]
 for (const name of required) {
   if (!names.includes(name)) throw new Error(`packed artifact is missing ${name}`)
 }
 
 const forbidden = names.filter(name =>
-  /(^|\/)(?:\.env(?:\.|$)|\.git|node_modules|tests?|scripts?|src)(?:\/|$)|auth\.json$|credential|token/iu.test(name),
+  /(^|\/)(?:\.env(?:\.|$)|\.git|node_modules|tests?|scripts?|src|fixtures)(?:\/|$)|auth\.json$|credential|token|synthetic-unknown-live-probe/iu.test(name),
 )
 if (forbidden.length > 0) {
   throw new Error(`packed artifact contains forbidden files: ${forbidden.join(', ')}`)

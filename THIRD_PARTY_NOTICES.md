@@ -22,6 +22,45 @@ is copied):
 - `pi-opencode-go-provider` (MIT, (c) 2025) — OpenCode Go provider and model
   metadata reconciliation approach used by later catalog work.
 
-Model metadata reconciliation in later releases retains upstream MIT copyright
-notice here. License texts of runtime peers are reproduced in their own package
-manifests and in this repository's `LICENSE` where applicable.
+License texts of runtime peers are reproduced in their own package manifests
+and in this repository's `LICENSE` where applicable.
+
+## pi-opencode-go-provider (MIT)
+
+The catalog and reconciliation machinery in this repository
+(`src/catalog.ts`, `src/reconcile.ts`, `scripts/update-models.ts`) is an
+independent implementation. Its algorithm design — stale-while-revalidate
+sourcing (committed catalog + live ids), the 14-day deprecation grace period
+with first-transition timestamps, quarantine of unknown ids, and the
+patch-on-top override layer — is inspired by the upstream project
+`pi-opencode-go-provider` (https://github.com/monotykamary/pi-opencode-go-provider).
+No upstream source code is copied; the MIT license is reproduced below as
+required by its terms:
+
+```
+MIT License
+
+Copyright (c) 2025
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+Model metadata is sourced from OpenCode's models.dev
+(`https://models.opencode.ai/api.json`); only the `opencode-go` provider record
+is retained, as a frozen fixture, and the full API payload is not redistributed.
