@@ -101,6 +101,13 @@ describe("packed artifact", () => {
         join(consumerDir, "node_modules", "@earendil-works"),
         "dir",
       );
+      // The Task 7 browser card externalizes react; a real DSH web host
+      // provides it for browser plugins, so the consumer mirrors that too.
+      await symlink(
+        join(REPO_ROOT, "node_modules", "react"),
+        join(consumerDir, "node_modules", "react"),
+        "dir",
+      );
       await writeFile(
         join(consumerDir, "package.json"),
         JSON.stringify({ name: "consumer", private: true, type: "module" }, null, 2),

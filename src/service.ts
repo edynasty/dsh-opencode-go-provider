@@ -36,9 +36,12 @@ import type { Config as ConfigType, SectionInput } from "./config.ts";
 import { resolveApiKey } from "./credentials.ts";
 import { embeddedPatches } from "./catalog-loader.ts";
 import { resolveCachePath, writeCacheAtomic } from "./cache.ts";
+import { mountControl, trackLifecycleEvents } from "./control-wiring.ts";
+import { registerControlRoutes } from "./web-routes.ts";
 import { CatalogLifecycle } from "./lifecycle.ts";
+import { defaultScheduler } from "./scheduler.ts";
 import { nodeFetch } from "./sync.ts";
-import type { Scheduler, SyncFetch } from "./sync.ts";
+import type { SyncFetch } from "./sync.ts";
 import { OpenCodeGoAdapter } from "./adapter.ts";
 
 /**
@@ -102,29 +105,6 @@ function resolveDshHome(ctx: Context): string {
   return process.env.DSH_HOME ?? join(homedir(), ".dsh");
 }
 
-/** Production scheduler: real timers, unref'd so they never hold the host open. */
-function defaultScheduler(): Scheduler {
-  const timers = new Map<number, ReturnType<typeof setTimeout>>();
-  let nextId = 1;
-  return {
-    setTimer: (callback, delayMs) => {
-      const id = nextId;
-      nextId += 1;
-      const timer = setTimeout(callback, delayMs);
-      timer.unref?.();
-      timers.set(id, timer);
-      return { id };
-    },
-    clearTimer: (handle) => {
-      const timer = timers.get(handle.id);
-      if (timer !== undefined) {
-        timers.delete(handle.id);
-        clearTimeout(timer);
-      }
-    },
-  };
-}
-
 /** Cordis plugin factory: mount the provider's reversible Host effects. */
 export function apply(ctx: Context, rawConfig?: SectionInput): void {
   // Gate the composition entry BEFORE any registration side effect.
@@ -136,6 +116,7 @@ export function apply(ctx: Context, rawConfig?: SectionInput): void {
   // The SWR catalog lifecycle owns the served snapshot; its network, clock,
   // scheduler, cache home and credential seam are all injected so a harness
   // can fail-close the network and point the cache at a temp home.
+  const tracker = trackLifecycleEvents();
   const lifecycle = new CatalogLifecycle({
     fetch: resolveHostFetch(ctx),
     resolveKey: (ref) => resolveApiKey(ctx, ref),
@@ -145,6 +126,22 @@ export function apply(ctx: Context, rawConfig?: SectionInput): void {
     cachePath: () => resolveCachePath(resolveDshHome(ctx)),
     patches: embeddedPatches(),
     persistCache: writeCacheAtomic,
+    observe: tracker.observe,
+  });
+  // The narrow control seam serves Host commands and the client Remote/API;
+  // it rides the plugin fiber via the provide and is withdrawn on disposal.
+  const control = mountControl(ctx, {
+    lifecycle,
+    tracker,
+    current: () => current(),
+    resolveKey: (ref) => resolveApiKey(ctx, ref),
+    fetch: resolveHostFetch(ctx),
+    scheduler: defaultScheduler(),
+  });
+  // The browser card's same-origin control routes mount only where the Web
+  // server is composed; each registration rides the injected fiber.
+  ctx.inject(["webServer"], (webCtx) => {
+    registerControlRoutes(webCtx, control);
   });
   const adapter = new OpenCodeGoAdapter({
     currentConfig: () => current(),

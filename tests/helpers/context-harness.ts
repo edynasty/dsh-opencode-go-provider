@@ -27,6 +27,7 @@ import type { SyncFetch } from "../../src/sync.ts";
 import { failClosedFetch } from "./fake-network.ts";
 import type { SectionInput } from "../../src/config.ts";
 import { apply } from "../../src/service.ts";
+import { ProviderControl } from "../../src/control.ts";
 
 /** In-memory `CredentialProvider` double. Empty values are rejected at set. */
 export class MemoryCredentials extends CredentialProvider {
@@ -204,6 +205,17 @@ export function requireSettings(harness: Pick<BootServicesResult, "settings">): 
     throw new Error("test setup: settings service was not mounted");
   }
   return harness.settings;
+}
+
+/**
+ * Safe getter: narrow the plugin-mounted control seam. The control is provided
+ * on the plugin fiber, whose provides remain visible from the root context
+ * while the fiber is mounted.
+ */
+export function requireControl(ctx: Context): ProviderControl {
+  const control = ctx.get("opencodeGoControl");
+  if (control instanceof ProviderControl) return control;
+  throw new Error("test setup: opencodeGoControl was not mounted");
 }
 
 /** Flush the settings watcher queue (Cordis watchers run on a later task). */

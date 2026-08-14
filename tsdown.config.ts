@@ -26,7 +26,7 @@ const HOST_EXTERNALS = [
 
 export default [
   {
-    entry: { index: "src/index.ts" },
+    entry: { index: "src/index.ts", bin: "src/bin.ts" },
     outDir: "lib",
     format: ["esm"],
     platform: "node",
@@ -45,5 +45,6 @@ export default [
     dts: true,
     clean: false,
     fixedExtension: false,
+    deps: { neverBundle: ["react", "react/jsx-runtime", "react-dom", "react-dom/client"] },
   },
 ] satisfies UserConfig[];

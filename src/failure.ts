@@ -24,6 +24,8 @@ export function failureMessage(code: string): string {
     case "LIVE_HTTP_5XX":
     case "LIVE_HTTP_ERROR":
       return "the live /models source failed";
+    case "LIVE_HTTP_429":
+      return "the live /models source is rate-limiting the provider credential";
     case "MODELS_DEV_PARSE":
       return "the models.dev payload could not be parsed";
     case "LIVE_PARSE":
