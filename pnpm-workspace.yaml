@@ -1,0 +1,7 @@
+# DSH rc.6 Host satisfies the provider's peerDependencies at install time.
+# Do not auto-install peers into this repository's own node_modules during
+# development; only devDependencies used by the local gates are installed here.
+autoInstallPeers: false
+minimumReleaseAgeExclude:
+  - '@deepseek-ai/cordis@4.0.1'
+  - '@deepseek-ai/cosmokit@1.8.2'

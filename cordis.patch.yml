@@ -1,0 +1,8 @@
+# Registers the llm-opencode-go bundle row. The row mounts this package's Host
+# plugin (lib/index.js) by package name, exactly as a profile-level
+# cordis.patch.yml would. Optional capabilities stay opt-in via profile patch
+# overlays; the provider's own configuration defaults land here alongside their
+# schema in the configuration todo.
+- insert:
+    - id: llm-opencode-go
+      name: dsh-opencode-go-provider
