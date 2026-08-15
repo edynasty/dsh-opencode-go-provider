@@ -13,6 +13,7 @@ declared as `peerDependencies` and distributed under their own licenses:
 | `@deepseek-ai/schemastery` | MIT | per its package manifest |
 | `@earendil-works/pi-ai` | MIT | per its package manifest |
 | `react` | MIT | (c) Meta Platforms |
+| `yaml` (bundled into `lib/` shared chunk) | ISC | (c) Eemeli Aro |
 
 The bundle contract, packaging layout and client-injection declarations follow
 the public patterns of the following projects (pattern reference only; no code
@@ -22,8 +23,10 @@ is copied):
 - `pi-opencode-go-provider` (MIT, (c) 2025) — OpenCode Go provider and model
   metadata reconciliation approach used by later catalog work.
 
-License texts of runtime peers are reproduced in their own package manifests
-and in this repository's `LICENSE` where applicable.
+License texts of runtime peers are distributed with each dependency's own
+package (its manifest and shipped license files); consult those artifacts for
+the authoritative license terms. This repository's `LICENSE` covers only this
+project's own code.
 
 ## pi-opencode-go-provider (MIT)
 
@@ -64,3 +67,29 @@ SOFTWARE.
 Model metadata is sourced from OpenCode's models.dev
 (`https://models.opencode.ai/api.json`); only the `opencode-go` provider record
 is retained, as a frozen fixture, and the full API payload is not redistributed.
+
+## Bundled dependency: `yaml` (ISC)
+
+The `yaml` package (version 2.9.0, Copyright Eemeli Aro) is bundled into the
+`lib/` shared chunk so the Git-installed bundle is self-contained; it is a
+development dependency in `package.json` and never installed separately by a
+DSH profile. Its ISC license text is reproduced below as required by its
+terms:
+
+```
+ISC License
+
+Copyright Eemeli Aro <eemeli@gmail.com>
+
+Permission to use, copy, modify, and/or distribute this software for any purpose
+with or without fee is hereby granted, provided that the above copyright notice
+and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.
+```

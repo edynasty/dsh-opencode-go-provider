@@ -1,0 +1,86 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: read-only checkout, no token scope, no secrets, no
+# credential persistence. The live smoke step must NEVER run here — it
+# requires both a local RUN_OPENCODE_GO_LIVE=1 opt-in and a local
+# OPENCODE_GO_API_KEY, and this workflow injects neither (it is not even
+# declared), so the step always prints "skipped" and exits 0.
+permissions:
+  contents: read
+
+jobs:
+  # Offline compatibility signal across the supported Node matrix: identical
+  # frozen-lockfile install and offline gates on every supported engine.
+  gates:
+    name: gates (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22.19.0", "24", "26"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Enable Corepack (pins pnpm 11.7.0 via packageManager)
+        run: corepack enable
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck (Host + client programs)
+        run: pnpm run typecheck
+
+      - name: Unit tests (offline; includes docs/CI contract specs)
+        run: pnpm run test
+
+      - name: Build (deterministic; lib must stay byte-identical)
+        run: pnpm run build
+
+      - name: Publint
+        run: pnpm run publint
+
+      - name: "Live smoke (self-skips: requires RUN_OPENCODE_GO_LIVE=1 AND a local OPENCODE_GO_API_KEY; this workflow injects neither)"
+        run: node scripts/live-smoke.mjs
+
+  # Packed-artifact gate on the primary engine: tarball audit + packed
+  # install/remove lifecycle + Git-install proof + deterministic credential
+  # scan over the repository/package surface.
+  pack:
+    name: packed artifact gate
+    runs-on: ubuntu-latest
+    needs: gates
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Enable Corepack (pins pnpm 11.7.0 via packageManager)
+        run: corepack enable
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Pack check (audit + packed lifecycle + Git install proof)
+        run: pnpm run pack:check
+
+      - name: Credential scan (fixed file/category output only; never echoes matched lines or values)
+        run: pnpm run scan:secrets

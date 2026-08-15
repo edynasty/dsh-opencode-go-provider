@@ -16,6 +16,7 @@
 import { readFileSync, readdirSync, readlinkSync, lstatSync } from "node:fs";
 import { join } from "node:path";
 import { extractTarballSafe } from "./pack-tar.mjs";
+import { CREDENTIAL_PATTERNS } from "./credential-patterns.mjs";
 
 /** The six fixed lib files every packed artifact must ship. */
 const FIXED_LIB = [
@@ -27,10 +28,14 @@ const FIXED_LIB = [
   "lib/bin.d.ts",
 ];
 
-/** Every required packed file (metadata, license, patch, catalog, fixed lib). */
+/** Every required packed file (metadata, license, patch, catalog, fixed lib).
+ * README.zh.md is included because npm pack automatically ships every
+ * `README*` file regardless of the `files` allowlist (npm hardcoded
+ * convention), so the audit must match the actual packed bytes. */
 const REQUIRED = [
   "package.json",
   "README.md",
+  "README.zh.md",
   "LICENSE",
   "THIRD_PARTY_NOTICES.md",
   "cordis.patch.yml",
@@ -42,11 +47,13 @@ const REQUIRED = [
 ];
 
 /** Strict packed-file allowlist: metadata, license, patch, catalog, fixed lib
- * plus exactly one `control-<safe-hash>.js` shared chunk. */
+ * plus exactly one `control-<safe-hash>.js` shared chunk. README* variants
+ * are allowlisted because npm pack ships every README* file automatically. */
 export function isAllowedPath(path) {
   if (
     path === "package.json"
     || path === "README.md"
+    || path === "README.zh.md"
     || path === "LICENSE"
     || path === "THIRD_PARTY_NOTICES.md"
     || path === "cordis.patch.yml"
@@ -68,20 +75,38 @@ function isAllowedDir(path) {
 const FORBIDDEN_PATH = /(^|\/)(?:\.env(?:\.|$)|\.git|node_modules|tests?|scripts?|src|fixtures|evidence|cache|auth)(?:\/|$)|auth\.json$|credential|token|synthetic-unknown-live-probe|\.tgz$/iu;
 
 /**
- * Content patterns for real-looking secrets and credential sentinels.
- * Assignment-shaped only: a bare variable-name declaration without a value
- * (e.g. `const apiKeyEnv = "OPENCODE_GO_API_KEY"`) never matches.
+ * Content patterns for real-looking secrets and credential sentinels. The
+ * credential classes are the SHARED source (`scripts/credential-patterns.mjs`,
+ * also consumed by the repository scanner), so the two gates cannot drift;
+ * `dsh-t8-test-sentinel-key` is tarball-only because its literal lives in
+ * this file.
  */
 const SECRET_PATTERNS = [
-  /sk-[a-z0-9]{16,}/iu,
-  /go_live_[a-z0-9]{16,}/iu,
-  /OPENCODE_GO_API_KEY\s*[:=]\s*["']?[^"'\s]{8,}/iu,
-  /authorization\s*[:=]\s*bearer\s+\S+/iu,
-  /bearer\s+[a-z0-9._-]{16,}/iu,
-  /eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}/iu,
-  /(?:access[_-]?token|auth[_-]?token|refresh[_-]?token)\s*[:=]\s*["']?[a-z0-9._-]{16,}/iu,
+  ...CREDENTIAL_PATTERNS.map((entry) => entry.pattern),
   /dsh-t8-test-sentinel-key/iu,
 ];
+
+/**
+ * Decode packed bytes with strict UTF-8 semantics; non-text content (NUL,
+ * invalid UTF-8, UTF-16 BOM) is reported as a fixed `non-text` secret hit
+ * instead of silently scanning replacement-character garbage.
+ */
+function decodePackedText(buffer, rel) {
+  if (buffer.includes(0)) return { kind: "non-text" };
+  if (
+    (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe)
+    || (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff)
+  ) {
+    return { kind: "non-text" };
+  }
+  let content;
+  try {
+    content = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+  } catch {
+    return { kind: "non-text" };
+  }
+  return { kind: "text", content, rel };
+}
 
 /** Machine/DSH-state paths; calibrated to skip documented relative paths. */
 const PATH_PATTERNS = [
@@ -160,7 +185,12 @@ export async function auditTarball(tarball, workDir) {
       }
       packedPaths.push(rel);
       if (!isAllowedPath(rel) || FORBIDDEN_PATH.test(rel)) allowlistViolations.push(rel);
-      const content = readFileSync(abs).toString("utf8");
+      const decoded = decodePackedText(readFileSync(abs), rel);
+      if (decoded.kind === "non-text") {
+        secretHits.push(`${rel}: non-text`);
+        continue;
+      }
+      const content = decoded.content;
       for (const pattern of SECRET_PATTERNS) {
         if (pattern.test(content)) secretHits.push(`${rel}: ${String(pattern)}`);
       }
