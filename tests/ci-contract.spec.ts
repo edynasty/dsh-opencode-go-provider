@@ -211,6 +211,40 @@ describe("CI workflow least privilege", () => {
     }
   });
 
+  it("fetches full history on every job that runs the Git-install proof", () => {
+    // packed-lifecycle.spec.ts checks out the historical PINNED_COMMIT
+    // (45d28bea...) from a local `git clone file://` of the checkout; a
+    // shallow checkout (default fetch-depth: 1) cannot reach that commit on
+    // GitHub Actions. The gates job runs `pnpm run test` (vitest includes
+    // packed-lifecycle.spec.ts) and the pack job runs `pnpm run pack:check`
+    // (which also runs that spec), so EVERY checkout must fetch the full
+    // history.
+    const workflow = loadWorkflow();
+    expect(isRecord(workflow)).toBe(true);
+    const jobs = isRecord(workflow) ? workflow.jobs : undefined;
+    expect(isRecord(jobs)).toBe(true);
+    const jobList = Object.entries(isRecord(jobs) ? jobs : {});
+    expect(jobList.length).toBeGreaterThan(0);
+
+    const proofJobs = jobList.filter(([, job]) =>
+      runScripts(job).some(
+        (r) => r.includes("pnpm run test") || r.includes("pnpm run pack:check"),
+      ),
+    );
+    expect(proofJobs.length).toBeGreaterThan(0);
+
+    for (const [, job] of proofJobs) {
+      const checkouts = stepsOf(job).filter(
+        (step) => typeof step.uses === "string" && step.uses.startsWith("actions/checkout@v4"),
+      );
+      expect(checkouts.length).toBeGreaterThan(0);
+      for (const checkout of checkouts) {
+        expect(isRecord(checkout.with)).toBe(true);
+        expect(isRecord(checkout.with) ? checkout.with["fetch-depth"] : undefined).toBe(0);
+      }
+    }
+  });
+
   it("invokes the credential scan through the package script", () => {
     // The workflow must run `pnpm run scan:secrets` (the package script), so
     // the package.json script and the workflow gate cannot drift.
