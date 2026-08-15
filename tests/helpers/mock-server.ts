@@ -7,8 +7,9 @@
  * captured payload never includes header values or request bodies, so the
  * evidence stays secret-free by construction.
  */
-import { appendFileSync } from "node:fs";
+import { appendFileSync, mkdirSync } from "node:fs";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { dirname } from "node:path";
 import type { Protocol } from "../../src/types.ts";
 
 /** Mutable fact being assembled while a request is in flight. */
@@ -110,12 +111,18 @@ function sseEventSequence(text: string): readonly string[] {
 /**
  * Start a loopback mock server. Each request is recorded (sanitized) and the
  * test's responder writes the response. `ndjsonPath` optionally receives one
- * sanitized fact per request.
+ * sanitized fact per request; when given, its parent directory is created
+ * recursively BEFORE the server starts accepting requests, so a missing
+ * parent surfaces as a deterministic startMock rejection instead of an
+ * unhandled ENOENT from the response-finish append.
  */
 export async function startMock(
   ndjsonPath: string | undefined,
   respond: MockResponder,
 ): Promise<MockHandle> {
+  if (ndjsonPath !== undefined) {
+    mkdirSync(dirname(ndjsonPath), { recursive: true });
+  }
   const requests: RecordedRequest[] = [];
   const facts: WireFact[] = [];
   const server = createServer((request, response) => {
