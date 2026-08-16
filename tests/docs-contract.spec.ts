@@ -33,12 +33,12 @@ describe("bilingual docs contract", () => {
     expect(violations.length).toBeGreaterThan(0);
   });
 
-  it("pins the exact verified Task 8 SHA in the Git install spec", () => {
+  it("pins the exact verified SHA in the Git install spec", () => {
     const violations = validateDocsContract(REPO_ROOT);
     expect(violations).toEqual([]);
     const readme = readRoot("README.md");
     const readmeZh = readRoot("README.zh.md");
-    const spec = "github:edynasty/dsh-opencode-go-provider#db9644fc35ccd11f83e713e27d6a0dbd23f37f1e";
+    const spec = "github:edynasty/dsh-opencode-go-provider#d2a447610a5dff4006ac966525effd9669342a78";
     expect(readme).toContain(spec);
     expect(readmeZh).toContain(spec);
   });

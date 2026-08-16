@@ -25,7 +25,7 @@ stale-while-revalidate 模型目录与安全的诊断命令。
 Git 依赖：
 
 ```sh
-dsh plugin --profile web add github:edynasty/dsh-opencode-go-provider#db9644fc35ccd11f83e713e27d6a0dbd23f37f1e
+dsh plugin --profile web add github:edynasty/dsh-opencode-go-provider#d2a447610a5dff4006ac966525effd9669342a78
 ```
 
 仓库已提交 `lib/`，因此 Git 安装无需构建步骤即可加载组合包。卸载会移除包及其

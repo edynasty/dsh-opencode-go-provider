@@ -28,7 +28,7 @@ The package is not published to npm; the supported installation is a
 commit-pinned Git dependency for the DSH **web** profile:
 
 ```sh
-dsh plugin --profile web add github:edynasty/dsh-opencode-go-provider#db9644fc35ccd11f83e713e27d6a0dbd23f37f1e
+dsh plugin --profile web add github:edynasty/dsh-opencode-go-provider#d2a447610a5dff4006ac966525effd9669342a78
 ```
 
 `lib/` is committed to the repository, so the Git install loads the bundle

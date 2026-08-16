@@ -15,7 +15,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-export const PINNED_SHA = "db9644fc35ccd11f83e713e27d6a0dbd23f37f1e";
+export const PINNED_SHA = "d2a447610a5dff4006ac966525effd9669342a78";
 export const GIT_SPEC = `github:edynasty/dsh-opencode-go-provider#${PINNED_SHA}`;
 export const CREDENTIAL_REF = "OPENCODE_GO_API_KEY";
 export const ROUTE = "opencode-go";

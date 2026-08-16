@@ -15,7 +15,7 @@ npm install dsh-opencode-go-provider
 Or install from Git:
 
 ```sh
-dsh plugin --profile web add github:edynasty/dsh-opencode-go-provider#db9644fc35ccd11f83e713e27d6a0dbd23f37f1e
+dsh plugin --profile web add github:edynasty/dsh-opencode-go-provider#d2a447610a5dff4006ac966525effd9669342a78
 ```
 
 ## Features
