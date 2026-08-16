@@ -91,7 +91,13 @@ const primaryButtonStyle: CSSProperties = {
   background: "var(--dsw-alias-brand-primary)",
   color: "white",
 };
+const disabledButtonStyle: CSSProperties = { opacity: 0.4, cursor: "not-allowed" };
+
 const noticeStyle: CSSProperties = { ...bodyStyle, color: "var(--dsw-alias-state-error-primary)" };
+
+function buttonDisabledStyle(disabled: boolean, base: CSSProperties): CSSProperties {
+  return disabled ? { ...base, ...disabledButtonStyle } : base;
+}
 
 function noticeText(notice: Notice, t: ConnectCardProps["t"]): string {
   switch (notice.kind) {
@@ -241,14 +247,14 @@ export function ConnectCard({ remote, t }: ConnectCardProps): JSX.Element {
           disabled={busy}
           aria-describedby={keyHelpId}
         />
-        <button type="button" style={primaryButtonStyle} onClick={() => void handleConnect()} disabled={busy || keyInput.length === 0}>
+        <button type="button" style={buttonDisabledStyle(busy || keyInput.length === 0, primaryButtonStyle)} onClick={() => void handleConnect()} disabled={busy || keyInput.length === 0}>
           {t("connect")}
         </button>
-        <button type="button" style={buttonStyle} onClick={() => void handleTest()} disabled={busy}>
+        <button type="button" style={buttonDisabledStyle(busy, buttonStyle)} onClick={() => void handleTest()} disabled={busy}>
           {t("testConnection")}
         </button>
         {connected ? (
-          <button type="button" style={buttonStyle} onClick={() => void handleDisconnect()} disabled={busy}>
+          <button type="button" style={buttonDisabledStyle(busy, buttonStyle)} onClick={() => void handleDisconnect()} disabled={busy}>
             {t("disconnect")}
           </button>
         ) : null}

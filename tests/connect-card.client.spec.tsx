@@ -19,6 +19,7 @@ import type { ConnectCardProps } from "../src/client/connect-card.tsx";
 import type { ConnectCardKey } from "../src/client/locales.ts";
 import { en } from "../src/client/locales.ts";
 import type { ConnectRemote } from "../src/client/connect-remote.ts";
+import type { ClientStatus } from "../src/client/connect-remote.ts";
 
 const FAKE_KEY = "sk-card-fake-key-0123456789abcdef";
 const t = (key: ConnectCardKey): string => en[key];
@@ -182,5 +183,57 @@ describe("ConnectCard", () => {
     renderCard({ remote, t });
     expect(await screen.findByText(en.title)).toBeTruthy();
     expect(screen.getAllByText(en.title)).toHaveLength(1);
+  });
+
+  it("disabled connect button has reduced opacity for visual distinction", async () => {
+    const { remote } = fakeRemote(false);
+    renderCard({ remote, t });
+    await screen.findByText(en.notConnected);
+    const connectBtn = screen.getByRole("button", { name: en.connect });
+    expect(connectBtn).toHaveProperty("disabled", true);
+    expect(connectBtn.style.opacity).toBe("0.4");
+  });
+
+  it("enabled connect button has full opacity", async () => {
+    const user = userEvent.setup();
+    const { remote } = fakeRemote(false);
+    renderCard({ remote, t });
+    const input = await screen.findByLabelText(en.keyLabel);
+    await user.type(input, FAKE_KEY);
+    const connectBtn = screen.getByRole("button", { name: en.connect });
+    expect(connectBtn).not.toHaveProperty("disabled", true);
+    expect(connectBtn.style.opacity).toBe("");
+  });
+
+  it("disabled test/disconnect buttons have reduced opacity when busy", async () => {
+    const user = userEvent.setup();
+    // Hanging remote keeps busy=true so we can inspect disabled state
+    let resolveStatus: (v: ClientStatus) => void = () => {};
+    const remote: ConnectRemote = {
+      connect: async () => new Promise<{ kind: "connected" }>((r) => { resolveStatus = () => r({ kind: "connected" }); }),
+      disconnect: async () => ({ kind: "disconnected" }),
+      status: async () =>
+        new Promise<ClientStatus>((r) => {
+          resolveStatus = r;
+        }),
+      doctor: async () => ({ kind: "configured", liveModelCount: 1 }),
+    };
+    renderCard({ remote, t });
+    resolveStatus({ configured: true, origin: "embedded", modelCount: 0, refreshedAt: "", lastAttempt: { kind: "none" } });
+    await waitFor(() => expect(screen.getByText(en.connected)).toBeTruthy());
+
+    const input = await screen.findByLabelText(en.keyLabel);
+    await user.type(input, FAKE_KEY);
+    await user.click(screen.getByRole("button", { name: en.connect }));
+
+    await waitFor(() => {
+      const testBtn = screen.getByRole("button", { name: en.testConnection });
+      expect(testBtn).toHaveProperty("disabled", true);
+      expect(testBtn.style.opacity).toBe("0.4");
+    });
+
+    const disconnectBtn = screen.getByRole("button", { name: en.disconnect });
+    expect(disconnectBtn).toHaveProperty("disabled", true);
+    expect(disconnectBtn.style.opacity).toBe("0.4");
   });
 });
