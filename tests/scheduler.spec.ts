@@ -12,13 +12,17 @@ import { describe, expect, it } from "vitest";
 import { defaultScheduler } from "../src/scheduler.ts";
 import type { TimerHandle } from "../src/sync.ts";
 
-/** Bounded event-loop yield: let a 0ms real timer fire without a sleep. */
+/**
+ * Real-time-budgeted wait: a fixed setImmediate turn count was flaky under CI
+ * load, so poll with a wall-clock deadline instead.
+ */
 async function waitFor(check: () => boolean): Promise<void> {
-  for (let turn = 0; turn < 50; turn += 1) {
+  const deadline = Date.now() + 5_000;
+  while (Date.now() < deadline) {
     if (check()) return;
-    await new Promise((resolve) => setImmediate(resolve));
+    await new Promise((resolve) => setTimeout(resolve, 50));
   }
-  throw new Error("test: condition not reached after event-loop turns");
+  throw new Error("test: condition not reached within 5000ms");
 }
 
 describe("defaultScheduler", () => {
