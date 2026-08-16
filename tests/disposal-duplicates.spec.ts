@@ -151,8 +151,9 @@ describe("cross-registration rollback on failed mounts", () => {
     expect(llm.listProviders()).toEqual(foreignOwnership);
   });
 
-  it("rejects when a foreign directory owns the route and rolls back the namespace", async () => {
-    // Given: a foreign directory already declares opencode-go; no adapter.
+  it("mounts when a foreign directory owns the route (adoption) with no topology churn", async () => {
+    // Given: a foreign directory already declares opencode-go (the web base
+    // bundle scenario); no adapter yet.
     const services = await bootServices({ withSettings: true });
     const { ctx, llm } = services;
     const settings = requireSettings(services);
@@ -160,18 +161,28 @@ describe("cross-registration rollback on failed mounts", () => {
     const foreignDirectory = llm.listConfigurableProviders();
     const announced = countTopologyAnnouncements(ctx);
     const before = announced.count();
-    // When: the plugin mounts and the directory conflict rejects the fiber.
+    // When: the plugin mounts; the foreign entry is adopted, not re-registered
+    // (an unguarded registration would reject the mount with
+    // DUPLICATE_DIRECTORY — the defect this adoption guard removes).
     const fiber = mountPlugin(ctx, {});
-    await expect(fiber).rejects.toThrow();
-    // Then: the failed mount left no plugin adapter or namespace effect.
+    await fiber;
+    try {
+      // Then: the mount succeeded; the foreign directory entry is untouched.
+      expect(llm.listConfigurableProviders()).toEqual(foreignDirectory);
+      // The plugin's own adapter and settings namespace effects exist.
+      expect(llm.listProviders()).toEqual([{ id: "opencode-go", name: "OpenCode Go" }]);
+      expect(settings.get(NS)).toBeDefined();
+      // Adoption registers no duplicate directory: exactly one announcement
+      // (the adapter) beyond the pre-mount count.
+      expect(announced.count()).toBe(before + 1);
+      const settled = announced.count();
+      await flushAsync();
+      expect(announced.count()).toBe(settled);
+    } finally {
+      await fiber.dispose();
+    }
+    // Disposal withdraws the own adapter but never the foreign entry.
     expect(llm.listProviders()).toEqual([]);
-    expect(settings.get(NS)).toBeUndefined();
-    // The conflict was refused before any topology was created: no announcements.
-    expect(announced.count()).toBe(before);
-    const settled = announced.count();
-    await flushAsync();
-    expect(announced.count()).toBe(settled);
-    // The foreign directory entry is untouched.
     expect(llm.listConfigurableProviders()).toEqual(foreignDirectory);
   });
 });

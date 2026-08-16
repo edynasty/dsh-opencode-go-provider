@@ -153,6 +153,16 @@ export function apply(ctx: Context, rawConfig?: SectionInput): void {
   let directory: DirectoryRegistrationHandle | undefined;
   const ensureDirectory = (): void => {
     if (directory !== undefined) return;
+    // The web base bundle (`dsh-llm-pi-ai`) pre-declares every catalog apiKey
+    // provider, `opencode-go` included. The registry has no adopt/override
+    // API, so co-existence means keeping the foreign entry (config surface
+    // only) while this bundle's adapter/Connect/doctor take over the route;
+    // self-registering would throw DUPLICATE_DIRECTORY and reject the mount.
+    // Re-evaluated per topology check: if the foreign entry disappears, the
+    // self-registration below supplies our own.
+    if (ctx.llm.listConfigurableProviders().some((entry) => entry.provider === PROVIDER_ROUTE)) {
+      return;
+    }
     directory = ctx.llm.registerConfigurableProviders([DIRECTORY_ENTRY]);
   };
 

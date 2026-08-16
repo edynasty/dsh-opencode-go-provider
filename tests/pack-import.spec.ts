@@ -35,10 +35,28 @@ function runSync(command: string, args: readonly string[], cwd: string): string 
 }
 
 const CONSUMER_SCRIPT = `
+import { createRequire } from "node:module";
 const results = {};
 try {
+  // The DSH web host consumes browser bundles through the module loader: the
+  // client artifact calls window.__ModuleLoader__.load({ id, factory }) and
+  // the loader reads the factory's module.exports. Mirror that handoff here —
+  // the factory's require resolves the bundle's externals (react, ...) from
+  // the consumer's node_modules, exactly like the host's module table.
+  const req = createRequire(import.meta.url);
+  const loaded = {};
+  globalThis.window = {
+    __ModuleLoader__: {
+      load: ({ id, factory }) => {
+        const exports = factory((specifier) => req(specifier));
+        loaded[id] = exports;
+        return exports;
+      },
+    },
+  };
   const root = await import("dsh-opencode-go-provider");
-  const client = await import("dsh-opencode-go-provider/client");
+  await import("dsh-opencode-go-provider/client");
+  const client = loaded["dsh-opencode-go-provider"];
   results.ok = true;
   results.root = {
     name: root.provider?.name ?? null,
@@ -46,9 +64,9 @@ try {
     apiKeyEnv: root.provider?.apiKeyEnv ?? null,
   };
   results.client = {
-    name: client.clientContract?.name ?? null,
-    providerRoute: client.clientContract?.providerRoute ?? null,
-    apiKeyEnv: client.clientContract?.apiKeyEnv ?? null,
+    name: client?.clientContract?.name ?? null,
+    providerRoute: client?.clientContract?.providerRoute ?? null,
+    apiKeyEnv: client?.clientContract?.apiKeyEnv ?? null,
   };
 } catch (error) {
   results.ok = false;

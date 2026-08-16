@@ -54,7 +54,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json",
     "test": "vitest run",
-    "build": "tsdown",
+    "build": "tsdown && node scripts/emit-client-dts.mjs",
     "publint": "publint",
     "package-contract": "vitest run tests/package-contract.spec.ts",
     "docs-contract": "vitest run tests/docs-contract.spec.ts tests/ci-contract.spec.ts tests/live-smoke.spec.ts",
@@ -62,7 +62,7 @@
     "scan:secrets": "node scripts/scan-secrets.mjs",
     "live-smoke": "node scripts/live-smoke.mjs",
     "update:models": "node scripts/update-models.ts",
-    "check": "tsc -p tsconfig.json && tsc -p tsconfig.client.json && vitest run && tsdown && publint && node scripts/check-pack.mjs && vitest run tests/package-contract.spec.ts"
+    "check": "tsc -p tsconfig.json && tsc -p tsconfig.client.json && vitest run && corepack pnpm@11.7.0 run build && publint && node scripts/check-pack.mjs && vitest run tests/package-contract.spec.ts"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1-rc.1",

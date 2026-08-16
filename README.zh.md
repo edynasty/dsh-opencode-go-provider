@@ -35,6 +35,13 @@ bundle 行：
 dsh plugin --profile web remove dsh-opencode-go-provider
 ```
 
+### 与 web base bundle 共存
+
+web profile 的 base bundle（`@deepseek-ai/dsh-llm-pi-ai`）已在 provider 目录中
+声明了 `opencode-go`（其目录原生包含该路由）。本包**采用**该已有条目而非重复
+注册，并以自身 adapter（更丰富的 SWR catalog）、Connect 卡与 doctor 路由接管该
+路由。与 base bundle 共存无需任何 profile 改动——特别是无需禁用 `llm-pi-ai`。
+
 ## 注册内容
 
 - 唯一 provider 路由：**`opencode-go`**，由 `llm-opencode-go` bundle 行

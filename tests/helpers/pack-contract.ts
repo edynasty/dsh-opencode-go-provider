@@ -76,16 +76,34 @@ export function validatePatchStructure(patch: unknown): void {
 
 /** The child script proving the packed root/client bytes load through exports. */
 const VERIFY_SCRIPT = `
+import { createRequire } from "node:module";
 const results = {};
 try {
+  // The DSH web host consumes browser bundles through the module loader: the
+  // client artifact calls window.__ModuleLoader__.load({ id, factory }) and
+  // the loader reads the factory's module.exports. Mirror that handoff here —
+  // the factory's require resolves the bundle's externals (react, ...) from
+  // the consumer's node_modules, exactly like the host's module table.
+  const req = createRequire(import.meta.url);
+  const loaded = {};
+  globalThis.window = {
+    __ModuleLoader__: {
+      load: ({ id, factory }) => {
+        const exports = factory((specifier) => req(specifier));
+        loaded[id] = exports;
+        return exports;
+      },
+    },
+  };
   const rootUrl = import.meta.resolve("dsh-opencode-go-provider");
   const clientUrl = import.meta.resolve("dsh-opencode-go-provider/client");
   const root = await import("dsh-opencode-go-provider");
-  const client = await import("dsh-opencode-go-provider/client");
+  await import("dsh-opencode-go-provider/client");
+  const client = loaded["dsh-opencode-go-provider"];
   results.ok = root.provider?.name === "dsh-opencode-go-provider"
     && root.provider?.route === "opencode-go"
-    && client.clientContract?.name === "dsh-opencode-go-provider-client"
-    && client.clientContract?.providerRoute === "opencode-go";
+    && client?.clientContract?.name === "dsh-opencode-go-provider-client"
+    && client?.clientContract?.providerRoute === "opencode-go";
   results.rootUrl = rootUrl;
   results.clientUrl = clientUrl;
   results.error = results.ok ? undefined : "contract mismatch";

@@ -7,7 +7,7 @@
 import { spawnSync } from "node:child_process";
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { FAKE_KEY, isolatedEnv } from "./release-candidate-subprocess.ts";
+import { FAKE_KEY, REPO_ROOT, isolatedEnv } from "./release-candidate-subprocess.ts";
 import type { Profile } from "./packed-profile.ts";
 import { isRecord, isString } from "./type-guards.ts";
 
@@ -30,6 +30,7 @@ export interface HostLoadResult {
 const HOST_LOAD_SCRIPT = `
 import { Context } from "@deepseek-ai/cordis";
 import { LlmRuntime } from "@deepseek-ai/dsh-llm";
+import { createRequire } from "node:module";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { parse } from "yaml";
@@ -37,6 +38,23 @@ import { parse } from "yaml";
 const profileRoot = process.env.PROFILE_ROOT;
 const dshHome = process.env.DSH_HOME;
 if (!profileRoot || !dshHome) throw new Error("PROFILE_ROOT and DSH_HOME must be set");
+
+// The DSH web host consumes browser bundles through the module loader: the
+// client artifact calls window.__ModuleLoader__.load({ id, factory }) and the
+// loader reads the factory's module.exports. Mirror that handoff in Node —
+// the factory's require resolves the bundle's externals (react, ...) from the
+// provider repo, which carries them as devDependencies.
+const repoRequire = createRequire(join(process.env.PROVIDER_REPO ?? "", "package.json"));
+const loaded = {};
+globalThis.window = {
+  __ModuleLoader__: {
+    load: ({ id, factory }) => {
+      const exports = factory((specifier) => repoRequire(specifier));
+      loaded[id] = exports;
+      return exports;
+    },
+  },
+};
 
 const patch = parse(await readFile(join(profileRoot, "cordis.patch.yml"), "utf8"));
 const rows = [];
@@ -67,14 +85,20 @@ await Promise.all(fibers);
 const providers = ctx.llm.listProviders().map((p) => p.id);
 const configurableProviders = ctx.llm.listConfigurableProviders().map((p) => p.provider);
 const models = await ctx.llm.listModels("opencode-go");
-const client = await import("dsh-opencode-go-provider/client");
+// Load the client contract through the loader handoff like the web host. The
+// ESM-namespace fallback only serves historical pinned commits whose client
+// artifact predates the loader contract; current artifacts MUST register
+// through the loader (enforced by client-bundle-contract.spec and the packed
+// import gates), and for them the namespace carries no exports.
+const clientModule = await import("dsh-opencode-go-provider/client");
+const client = loaded["dsh-opencode-go-provider"] ?? clientModule;
 const result = {
   bundleRows: rows.map((r) => r.id),
   providers,
   configurableProviders,
   modelCount: models.length,
   firstModelId: models[0]?.id ?? null,
-  client: client.clientContract ?? null,
+  client: client?.clientContract ?? null,
 };
 process.stdout.write(JSON.stringify(result));
 process.exit(0);
@@ -133,6 +157,7 @@ export async function loadHostAndClient(profile: Profile): Promise<HostLoadResul
     const env = isolatedEnv(profile.root, {
       DSH_HOME: profile.root,
       PROFILE_ROOT: profile.root,
+      PROVIDER_REPO: REPO_ROOT,
       OPENCODE_GO_API_KEY: FAKE_KEY,
     });
     const result = spawnSync(process.execPath, [scriptPath], {

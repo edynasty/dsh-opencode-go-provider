@@ -38,6 +38,15 @@ without a build step. Uninstall removes the package and its bundle row:
 dsh plugin --profile web remove dsh-opencode-go-provider
 ```
 
+### Coexistence with the web base bundle
+
+The web profile's base bundle (`@deepseek-ai/dsh-llm-pi-ai`) already declares
+`opencode-go` in the provider directory (its catalog ships the route). This
+bundle **adopts** that entry instead of re-registering it, and takes over the
+route with its own adapter (richer SWR catalog), Connect card and doctor
+routes. No profile changes — and in particular no need to disable
+`llm-pi-ai` — are required to install alongside the base bundle.
+
 ## What the bundle registers
 
 - One provider route: **`opencode-go`**, mounted by the `llm-opencode-go`

@@ -24,6 +24,14 @@ const HOST_EXTERNALS = [
   "@deepseek-ai/dsh-web",
 ] as const;
 
+/** Browser externals the DSH web host resolves through the loader's require. */
+const CLIENT_EXTERNALS = [
+  "react",
+  "react/jsx-runtime",
+  "react-dom",
+  "react-dom/client",
+] as const;
+
 export default [
   {
     entry: { index: "src/index.ts", bin: "src/bin.ts" },
@@ -37,14 +45,29 @@ export default [
     deps: { neverBundle: [...HOST_EXTERNALS] },
   },
   {
+    // DSH web client-module loader contract: the artifact must be a
+    // side-effect script whose single statement hands the module to
+    // `window.__ModuleLoader__.load({ id, factory })`; the factory is a
+    // CJS-style closure resolving externals (react, ...) through the
+    // loader-injected `require` and returning `module.exports`. The intro
+    // provides the CJS shim variables the rolldown output references. A
+    // raw-ESM artifact cannot be consumed and the Connect card never
+    // renders ("loaded without registering"). Types ship via the
+    // scripts/emit-client-dts.mjs declarations pass.
     entry: { client: "src/client/index.tsx" },
     outDir: "lib",
-    format: "esm",
+    format: "cjs",
     platform: "browser",
     target: "es2024",
-    dts: true,
+    dts: false,
     clean: false,
     fixedExtension: false,
-    deps: { neverBundle: ["react", "react/jsx-runtime", "react-dom", "react-dom/client"] },
+    deps: { neverBundle: [...CLIENT_EXTERNALS] },
+    outputOptions: {
+      entryFileNames: "client.js",
+      banner: `window.__ModuleLoader__.load({ id: "dsh-opencode-go-provider", factory: (require) => {`,
+      footer: "return module.exports; } });",
+      intro: "var module = { exports: {} }; var exports = module.exports;",
+    },
   },
 ] satisfies UserConfig[];
