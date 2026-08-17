@@ -194,6 +194,73 @@ describe("ConnectCard", () => {
     expect(screen.getAllByText(en.title)).toHaveLength(1);
   });
 
+  it("secondary (test/disconnect) button tokens align with official DSH Button CSS", async () => {
+    const user = userEvent.setup();
+    const { remote } = fakeRemote(true);
+    renderCard({ remote, t });
+    await screen.findByText(en.connected);
+    const testBtn = screen.getByRole("button", { name: en.testConnection });
+    // Official tokens: display inline-flex, border none, font-size 14px,
+    // background transparent, padding 0 14px, line-height 22px.
+    expect(testBtn.style.display).toBe("inline-flex");
+    expect(testBtn.style.alignItems).toBe("center");
+    expect(testBtn.style.justifyContent).toBe("center");
+    expect(testBtn.style.gap).toBe("4px");
+    // No border — official Button uses border: none.
+    expect(testBtn.style.borderWidth).toBe("0px");
+    expect(testBtn.style.fontSize).toBe("14px");
+    expect(testBtn.style.lineHeight).toBe("22px");
+    // background-color: transparent → rgba(0, 0, 0, 0) in computed terms
+    const bg = testBtn.style.backgroundColor;
+    expect(bg === "transparent" || bg === "rgba(0, 0, 0, 0)" || bg === "").toBe(true);
+    expect(testBtn.style.paddingLeft).toBe("14px");
+    expect(testBtn.style.paddingRight).toBe("14px");
+    expect(testBtn.style.paddingTop).toBe("0px");
+    expect(testBtn.style.paddingBottom).toBe("0px");
+    expect(testBtn.style.color).toBe("var(--dsw-alias-label-primary)");
+    expect(testBtn.style.borderRadius).toBe("18px");
+    expect(testBtn.style.cursor).toBe("pointer");
+    // Ensure the disconnect button (also secondary) matches the same tokens.
+    const disconnectBtn = screen.getByRole("button", { name: en.disconnect });
+    expect(disconnectBtn.style.display).toBe("inline-flex");
+    expect(disconnectBtn.style.borderWidth).toBe("0px");
+    expect(disconnectBtn.style.fontSize).toBe("14px");
+    expect(disconnectBtn.style.lineHeight).toBe("22px");
+    const discBg = disconnectBtn.style.backgroundColor;
+    expect(discBg === "transparent" || discBg === "rgba(0, 0, 0, 0)" || discBg === "").toBe(true);
+    // Sanity: typing into the input does not mutate secondary button style.
+    const input = await screen.findByLabelText(en.keyLabel);
+    await user.type(input, FAKE_KEY);
+    expect(testBtn.style.fontSize).toBe("14px");
+    expect(testBtn.style.borderWidth).toBe("0px");
+  });
+
+  it("primary (connect) button retains brand background while matching base tokens", async () => {
+    const user = userEvent.setup();
+    const { remote } = fakeRemote(false);
+    renderCard({ remote, t });
+    const input = await screen.findByLabelText(en.keyLabel);
+    await user.type(input, FAKE_KEY);
+    const connectBtn = screen.getByRole("button", { name: en.connect });
+    // Base tokens must align with official.
+    expect(connectBtn.style.display).toBe("inline-flex");
+    expect(connectBtn.style.alignItems).toBe("center");
+    expect(connectBtn.style.justifyContent).toBe("center");
+    expect(connectBtn.style.gap).toBe("4px");
+    expect(connectBtn.style.borderWidth).toBe("0px");
+    expect(connectBtn.style.fontSize).toBe("14px");
+    expect(connectBtn.style.lineHeight).toBe("22px");
+    expect(connectBtn.style.paddingLeft).toBe("14px");
+    expect(connectBtn.style.paddingRight).toBe("14px");
+    expect(connectBtn.style.paddingTop).toBe("0px");
+    expect(connectBtn.style.paddingBottom).toBe("0px");
+    expect(connectBtn.style.borderRadius).toBe("18px");
+    expect(connectBtn.style.cursor).toBe("pointer");
+    // Primary semantics: brand background, white foreground.
+    expect(connectBtn.style.background).toBe("var(--dsw-alias-brand-primary)");
+    expect(connectBtn.style.color).toBe("white");
+  });
+
   it("disabled connect button has reduced opacity for visual distinction", async () => {
     const { remote } = fakeRemote(false);
     renderCard({ remote, t });
@@ -201,6 +268,7 @@ describe("ConnectCard", () => {
     const connectBtn = screen.getByRole("button", { name: en.connect });
     expect(connectBtn).toHaveProperty("disabled", true);
     expect(connectBtn.style.opacity).toBe("0.4");
+    expect(connectBtn.style.cursor).toBe("not-allowed");
   });
 
   it("enabled connect button has full opacity", async () => {
