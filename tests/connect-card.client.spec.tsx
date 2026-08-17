@@ -78,6 +78,15 @@ describe("ConnectCard", () => {
     expect(input).toHaveProperty("value", "");
   });
 
+  it("applies the inputStyle to the key input so it is not a bare browser control", async () => {
+    const { remote } = fakeRemote(false);
+    renderCard({ remote, t });
+    const input = await screen.findByLabelText(en.keyLabel);
+    expect(input.style.minWidth).toBe("260px");
+    expect(input.style.border).toContain("1px solid");
+    expect(input.style.borderRadius).toBe("8px");
+  });
+
   it("walks disconnected → connected → disconnected through credential calls only", async () => {
     const user = userEvent.setup();
     const { remote, calls } = fakeRemote(false);

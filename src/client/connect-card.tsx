@@ -246,6 +246,7 @@ export function ConnectCard({ remote, t }: ConnectCardProps): JSX.Element {
           onChange={(event) => setKeyInput(event.target.value)}
           disabled={busy}
           aria-describedby={keyHelpId}
+          style={inputStyle}
         />
         <button type="button" style={buttonDisabledStyle(busy || keyInput.length === 0, primaryButtonStyle)} onClick={() => void handleConnect()} disabled={busy || keyInput.length === 0}>
           {t("connect")}
