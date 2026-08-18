@@ -4,15 +4,23 @@
  * `apply` rides the browser-plugin fiber: the locale dictionaries are
  * registered under `settings.opencode-go`, and the card is contributed to the
  * `settings.plugin.item` slot with the fetch-backed control remote — the same
- * registration shape the shipped dsh-codex-connect browser half uses against
- * the public `dsh-client-runtime`/`dsh-client-locale`/`dsh-client-ui-slots`
- * services. Fiber disposal removes both registrations.
+ * registration shape the shipped web browser half uses against the public
+ * `dsh-client-runtime`/`dsh-client-locale`/`dsh-client-ui-slots` services.
+ * Fiber disposal removes both registrations.
+ *
+ * Since DSH rc.7, `settings.plugin.item` is a KEYED slot keyed by the settings
+ * namespace a card edits. The configurable-plugins tab enumerates the settings
+ * namespaces the Host serves and dispatches each namespace's card via
+ * `renderSlot("settings.plugin.item", {}, { entryKey: ns })`, so a card is
+ * paired only when its `key` equals a served namespace. This card registers
+ * under `SETTINGS_NS` (the `llm-opencode-go` namespace this bundle owns on the
+ * Host, see src/service.ts), so the tab pairs that namespace with this card.
  */
 import type { ClientContext } from "@deepseek-ai/dsh-client-runtime/client";
 import type {} from "@deepseek-ai/dsh-client-ui-settings-plugins/client";
 import type {} from "@deepseek-ai/dsh-client-locale/client";
 import type {} from "@deepseek-ai/dsh-client-ui-slots";
-import { API_KEY_ENV, PLUGIN_NAME, PROVIDER_ROUTE } from "../contract.ts";
+import { API_KEY_ENV, PLUGIN_NAME, PROVIDER_ROUTE, SETTINGS_NS } from "../contract.ts";
 import { ConnectCard } from "./connect-card.tsx";
 import type { ConnectCardProps } from "./connect-card.tsx";
 import { createConnectRemote } from "./connect-remote.ts";
@@ -66,8 +74,7 @@ export function apply(ctx: ClientContext): void {
     ctx.slots.register(
       {
         name: "settings.plugin.item",
-        id: "opencode-go",
-        order: 30,
+        key: SETTINGS_NS,
         inject: (): ConnectCardInjected => ({ t, remote }),
       },
       ConnectCard,

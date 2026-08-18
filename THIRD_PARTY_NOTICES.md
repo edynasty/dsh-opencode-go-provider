@@ -7,7 +7,7 @@ declared as `peerDependencies` and distributed under their own licenses:
 
 | Package | License | Copyright |
 | --- | --- | --- |
-| DeepSeek Harness (`@deepseek-ai/*`, DSH rc.6) | MIT | (c) 2026 DeepSeek |
+| DeepSeek Harness (`@deepseek-ai/*`, DSH rc.7) | MIT | (c) 2026 DeepSeek |
 | `@deepseek-ai/cordis` | MIT | per its package manifest |
 | `cordis` | MIT | per its package manifest |
 | `@deepseek-ai/schemastery` | MIT | per its package manifest |

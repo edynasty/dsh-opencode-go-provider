@@ -204,7 +204,7 @@ export async function* toStreamChunks(
         yield {
           type: "finish",
           reason: mapFinishReason(event.message, contextWindow),
-          replayState: toReplayState(event.message),
+          replayState: { response: toReplayState(event.message) },
         };
         return;
       case "error":

@@ -142,7 +142,7 @@ function validateEnglishReadme(text: string, errors: string[]): void {
   );
 
   // DSH compatibility, Node engines, pnpm version.
-  requireToken(text, "rc.6", "README.md DSH rc.6 compatibility", errors);
+  requireToken(text, "rc.7", "README.md DSH rc.7 compatibility", errors);
   requireToken(text, "22.19", "README.md Node engine floor", errors);
   requireToken(text, "11.7.0", "README.md pnpm version", errors);
 
@@ -209,7 +209,7 @@ function validateChineseReadme(text: string, errors: string[]): void {
   }
   requireToken(text, "前缀", "README.zh.md no-prefix-guessing", errors);
 
-  requireToken(text, "rc.6", "README.zh.md DSH rc.6 compatibility", errors);
+  requireToken(text, "rc.7", "README.zh.md DSH rc.7 compatibility", errors);
   requireToken(text, "22.19", "README.zh.md Node engine floor", errors);
   requireToken(text, "11.7.0", "README.zh.md pnpm version", errors);
 

@@ -19,7 +19,7 @@ describe("bundle manifest contract", () => {
     // layer, entrypoints, configs and the lockfile.
     // When: the manifest contract validator inspects the whole package.
     const violations = validateBundleManifest(REPO_ROOT);
-    // Then: the manifest satisfies every field of the DSH rc.6 bundle contract.
+    // Then: the manifest satisfies every field of the DSH rc.7 bundle contract.
     expect(violations).toEqual([]);
   });
 });

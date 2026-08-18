@@ -1,6 +1,6 @@
 # dsh-opencode-go-provider
 
-面向 DeepSeek Harness（DSH rc.6）的 OpenCode Go LLM provider 组合包：单个
+面向 DeepSeek Harness（DSH rc.7）的 OpenCode Go LLM provider 组合包：单个
 `opencode-go` 模型路由接入 OpenCode Go 网关，附带 Web Connect 设置卡、
 stale-while-revalidate 模型目录与安全的诊断命令。
 
@@ -11,7 +11,7 @@ stale-while-revalidate 模型目录与安全的诊断命令。
 
 ## 环境要求
 
-- DeepSeek Harness **DSH rc.6**（本组合包面向 `0.1.0-rc.6` peer 图）。
+- DeepSeek Harness **DSH rc.7**（本组合包面向 `0.1.0-rc.7` peer 图）。
 - Node.js `^22.19.0 || >=24.0.0`。
 - corepack 托管的 **pnpm 11.7.0**（若 `pnpm --version` 无法经 Corepack 解析，
   先执行 `corepack enable`）。

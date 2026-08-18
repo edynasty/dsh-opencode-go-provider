@@ -3,14 +3,14 @@
 ## Supported scope
 
 `dsh-opencode-go-provider` is a community plugin for DeepSeek Harness
-(DSH rc.6). Supported surfaces:
+(DSH rc.7). Supported surfaces:
 
 - The commit-pinned Git installation of this repository
   (`github:edynasty/dsh-opencode-go-provider#<verified-sha>`).
 - The Host provider registration, the Web Connect card, the control routes,
   the standalone diagnostic `bin`, and the stale-while-revalidate catalog
   lifecycle described in [README.md](README.md).
-- DSH rc.6 hosts only. Unsupported DSH versions are out of scope, and the
+- DSH rc.7 hosts only. Unsupported DSH versions are out of scope, and the
   package does not claim compatibility with them.
 
 The npm registry is not an installation path for this package; npm-published
@@ -29,7 +29,7 @@ reporting route for this project.
 
 In your report, include:
 
-- The affected commit SHA or version, and the DSH rc.6 profile layout.
+- The affected commit SHA or version, and the DSH rc.7 profile layout.
 - A minimal reproducer that does **not** contain real credentials.
 - Whether the issue involves credentials, cache files, migration files or
   network behavior.
