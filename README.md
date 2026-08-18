@@ -1,6 +1,6 @@
 # dsh-opencode-go-provider
 
-OpenCode Go LLM provider bundle for DeepSeek Harness (DSH rc.6): a single
+OpenCode Go LLM provider bundle for DeepSeek Harness (DSH rc.7): a single
 `opencode-go` model route over the OpenCode Go gateway, with a Web Connect
 settings card, a stale-while-revalidate model catalog and safe diagnostic
 commands.
@@ -13,7 +13,7 @@ commands.
 
 ## Requirements
 
-- DeepSeek Harness **DSH rc.6** (the bundle targets the `0.1.0-rc.6` peer graph).
+- DeepSeek Harness **DSH rc.7** (the bundle targets the `0.1.0-rc.7` peer graph).
 - Node.js `^22.19.0 || >=24.0.0`.
 - corepack-managed **pnpm 11.7.0** (`corepack enable` first if `pnpm --version`
   does not resolve through Corepack).

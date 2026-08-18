@@ -72,7 +72,7 @@ describe("openai-completions stream mapping", () => {
         { type: "block-end", index: 0, block: { type: "text", text: "Hello world" } },
         { type: "block-end", index: 1, block: { type: "reasoning", text: "deep thought" } },
         { type: "usage", usage: { inputTokens: 10, outputTokens: 4 } },
-        { type: "finish", reason: { kind: "stop" }, replayState: expect.objectContaining({ kind: "opencode-go", version: 1 }) },
+        { type: "finish", reason: { kind: "stop" }, replayState: expect.objectContaining({ response: expect.objectContaining({ kind: "opencode-go", version: 1 }) }) },
       ]);
     } finally {
       await mock.close();
@@ -124,7 +124,7 @@ describe("openai-responses stream mapping", () => {
           type: "usage",
           usage: { inputTokens: 9, outputTokens: 4, cacheReadTokens: 3, reasoningTokens: 2 },
         },
-        { type: "finish", reason: { kind: "stop" }, replayState: expect.objectContaining({ kind: "opencode-go", version: 1 }) },
+        { type: "finish", reason: { kind: "stop" }, replayState: expect.objectContaining({ response: expect.objectContaining({ kind: "opencode-go", version: 1 }) }) },
       ]);
     } finally {
       await mock.close();
@@ -174,7 +174,7 @@ describe("anthropic-messages stream mapping", () => {
         { type: "reasoning-delta", index: 1, text: "deep thought" },
         { type: "block-end", index: 1, block: { type: "reasoning", text: "deep thought" } },
         { type: "usage", usage: { inputTokens: 10, outputTokens: 9 } },
-        { type: "finish", reason: { kind: "stop" }, replayState: expect.objectContaining({ kind: "opencode-go", version: 1 }) },
+        { type: "finish", reason: { kind: "stop" }, replayState: expect.objectContaining({ response: expect.objectContaining({ kind: "opencode-go", version: 1 }) }) },
       ]);
     } finally {
       await mock.close();

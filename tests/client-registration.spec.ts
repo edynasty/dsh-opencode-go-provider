@@ -3,15 +3,22 @@
  *
  * `apply` uses the REAL public DSH client services — the `SlotRegistry`
  * (dsh-client-runtime) and `LocaleRuntime` (dsh-client-locale) — exactly like
- * the shipped dsh-codex-connect browser half: the locale dictionaries are
- * registered under `settings.opencode-go`, and the Connect card is
- * contributed to the `settings.plugin.item` slot with the fetch-backed
- * control remote. Fiber disposal withdraws both registrations.
+ * the shipped web browser half: the locale dictionaries are registered under
+ * `settings.opencode-go`, and the Connect card is contributed to the
+ * `settings.plugin.item` slot with the fetch-backed control remote. Fiber
+ * disposal withdraws both registrations.
+ *
+ * Since DSH rc.7, `settings.plugin.item` is a KEYED slot: registrations must
+ * carry `options.key`, the settings namespace the card edits, and the
+ * configurable-plugins tab pairs each served namespace with the card whose
+ * key matches. This test declares the slot as keyed to reproduce that
+ * contract and asserts the card's key is the served `llm-opencode-go` namespace.
  */
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { Context, type Fiber } from "@deepseek-ai/cordis";
 import { apply, inject, LOCALE_NS } from "../src/client/index.tsx";
+import { SETTINGS_NS } from "../src/contract.ts";
 import { loadClientModules } from "./helpers/client-bundles.ts";
 
 type LoadedModules = Awaited<ReturnType<typeof loadClientModules>>;
@@ -37,7 +44,7 @@ async function mountClient(): Promise<MountedClient> {
     "children declared but the component consumes no renderSlot": "settings.plugin.item",
   } as const);
   slots.register(
-    { name: "root", children: { "settings.plugin.item": { kind: "list", scope: "root" } } },
+    { name: "root", children: { "settings.plugin.item": { kind: "keyed", scope: "root" } } },
     rootSeat,
   );
   const locale = new LocaleRuntime(ctx);
@@ -75,7 +82,7 @@ describe("client registration", () => {
       expect(entries).toHaveLength(1);
       const first = entries[0];
       if (first === undefined) throw new Error("test: expected one slot entry");
-      expect(first.options.id).toBe("opencode-go");
+      expect(first.options.key).toBe(SETTINGS_NS);
     } finally {
       await disposeFiber(fiber);
     }

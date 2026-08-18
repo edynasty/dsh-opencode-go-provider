@@ -1,6 +1,6 @@
 # Contributing to dsh-opencode-go-provider
 
-Thanks for contributing! This is a small, safety-critical DSH rc.6 provider
+Thanks for contributing! This is a small, safety-critical DSH rc.7 provider
 bundle; the gates below keep the packed artifact honest and the credential
 boundary intact.
 
@@ -41,7 +41,7 @@ pnpm run check
   `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`. No `any`, no
   unsafe `as` casts, no `@ts-ignore`/`@ts-expect-error`.
 - **No private imports**: never import `@deepseek-ai/<pkg>/src/*` — only the
-  public package entrypoints of the DSH rc.6 peer graph.
+  public package entrypoints of the DSH rc.7 peer graph.
 - **250-LOC production ceiling**: every production module stays under 250 pure
   LOC (docstrings excluded from the count by the awk convention). Split a
   concern into a new module rather than growing one.

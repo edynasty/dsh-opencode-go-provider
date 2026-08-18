@@ -30,7 +30,7 @@ import type {
 } from "@deepseek-ai/dsh-llm";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { BUNDLE_ROW_ID, DISPLAY_NAME, PROVIDER_ROUTE } from "./contract.ts";
+import { DISPLAY_NAME, PROVIDER_ROUTE, SETTINGS_NS } from "./contract.ts";
 import { Config, assertServiceable } from "./config.ts";
 import type { Config as ConfigType, SectionInput } from "./config.ts";
 import { resolveApiKey } from "./credentials.ts";
@@ -49,7 +49,7 @@ import { OpenCodeGoAdapter } from "./adapter.ts";
  * the public `SettingsNamespace` brand type so the declaration rollup names the
  * public type instead of inlining its underlying representation.
  */
-export const NS: SettingsNamespace = settingsNamespace(BUNDLE_ROW_ID);
+export const NS: SettingsNamespace = settingsNamespace(SETTINGS_NS);
 
 /** The one configurable-provider directory entry: the whole section is the profile. */
 export const DIRECTORY_ENTRY: LlmConfigurableProvider = {

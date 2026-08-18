@@ -131,6 +131,12 @@ const SUPPORTED_REPLAY_APIS = ["openai-completions", "openai-responses", "anthro
  * replay naming a wire protocol this bundle cannot serve is refused.
  */
 export function readReplayState(value: unknown): OpenCodeGoReplayState {
+  // Since DSH rc.7, the finish-chunk/message-source replay state is a
+  // ReplayEnvelope ({ response: <adapter payload> }); unwrap the payload
+  // before validating. Legacy rc.6-era raw states pass through unchanged.
+  if (isRecord(value) && value["kind"] !== "opencode-go" && "response" in value) {
+    value = value["response"];
+  }
   if (!isRecord(value)) return invalidReplay("expected an object");
   if (value["kind"] !== "opencode-go") return invalidReplay("unknown state kind");
   if (value["version"] !== 1) return invalidReplay(`unsupported version ${String(value["version"])}`);
