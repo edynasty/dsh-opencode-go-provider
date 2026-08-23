@@ -63,6 +63,23 @@ function toPiCost(cost: CatalogModel["cost"]): Model<Protocol>["cost"] {
 
 /** Project one embedded catalog entry into the pi-ai model vocabulary. */
 export function toPiModel(model: CatalogModel): Model<Protocol> {
+  // Map the catalog's reasoningOptions (effort values) into pi-ai's
+  // thinkingLevelMap. pi-ai's getSupportedThinkingLevels only advertises the
+  // top tiers ('max'/'xhigh') when the model maps them explicitly, so without
+  // this mapping the UI never offers 'max' even when the catalog declares it
+  // (e.g. deepseek-v4-flash*: ['low','high','max']). For openai-compatible
+  // routes the effort value is sent verbatim as reasoning_effort, so the
+  // mapped value is the level string itself. Non-effort kinds (toggle /
+  // budgetTokens) are ignored; a model with no effort options carries no
+  // thinkingLevelMap, and pi-ai falls back to its provider defaults.
+  const effortOption = model.reasoningOptions?.find((option) => option.kind === "effort");
+  const thinkingLevelMap = effortOption?.values.reduce(
+    (map, level) => {
+      if (level !== null) map[level] = level;
+      return map;
+    },
+    {} as Record<string, string>,
+  );
   return {
     id: model.id,
     name: model.name,
@@ -70,6 +87,9 @@ export function toPiModel(model: CatalogModel): Model<Protocol> {
     provider: PROVIDER_ROUTE,
     baseUrl: model.baseUrl,
     reasoning: model.reasoning,
+    ...(thinkingLevelMap === undefined || Object.keys(thinkingLevelMap).length === 0
+      ? {}
+      : { thinkingLevelMap }),
     input: toPiInput(model.input),
     cost: toPiCost(model.cost),
     contextWindow: model.contextWindow,
