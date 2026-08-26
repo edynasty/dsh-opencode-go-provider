@@ -1,0 +1,24 @@
+# Project-scoped Codex configuration.
+# Keep this file safe to commit: never place tokens, cookies, or API keys here.
+
+# Enable subagent workflows for repository tasks.
+[features]
+multi_agent = true
+
+# GitHub MCP gives Codex repository/issue/PR context when the environment
+# provides GITHUB_PERSONAL_ACCESS_TOKEN. Keep the token outside the repository.
+[mcp_servers.github]
+url = "https://api.githubcopilot.com/mcp/"
+bearer_token_env_var = "GITHUB_PERSONAL_ACCESS_TOKEN"
+startup_timeout_sec = 20
+tool_timeout_sec = 60
+
+# Context7 provides current library documentation. It is intentionally
+# configured without repository secrets.
+[mcp_servers.context7]
+url = "https://mcp.context7.com/mcp"
+startup_timeout_sec = 20
+tool_timeout_sec = 60
+
+# Agent roles are defined in .codex/agents/*.toml and should be used according
+# to AGENTS.md. MCP availability depends on the host running Codex.
